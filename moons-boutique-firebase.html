@@ -1,0 +1,2118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moon's Boutique — Inventory &amp; Sales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --maroon:#1E1912;
+    --maroon-dark:#0D0B08;
+    --gold:#C79A3C;
+    --gold-light:#F1E3C0;
+    --wine:#7A1F3D;
+    --wine-bg:#F6E7EC;
+    --cream:#FBF6EC;
+    --panel:#FFFFFF;
+    --ink:#2B2320;
+    --ink-soft:#6B5F55;
+    --line:#E7DCC9;
+    --danger:#A5352B;
+    --danger-bg:#FBEAE7;
+    --success:#3D6B4A;
+    --success-bg:#E9F2EA;
+    --warn-bg:#FBF0DC;
+    --radius:10px;
+    --font-display:'Fraunces', Georgia, serif;
+    --font-body:'Inter', system-ui, -apple-system, sans-serif;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --gold-light:#3A2E1A;
+      --wine-bg:#3A1E26;
+      --cream:#1B1613;
+      --panel:#252019;
+      --ink:#F1E9DE;
+      --ink-soft:#B8AA9A;
+      --line:#3C332A;
+      --danger:#E5786C;
+      --danger-bg:#3A211E;
+      --success:#7FBE8F;
+      --success-bg:#1E2E22;
+      --warn-bg:#332A18;
+    }
+  }
+  :root[data-theme="dark"] {
+    --gold-light:#3A2E1A;
+    --wine-bg:#3A1E26;
+    --cream:#1B1613;
+    --panel:#252019;
+    --ink:#F1E9DE;
+    --ink-soft:#B8AA9A;
+    --line:#3C332A;
+    --danger:#E5786C;
+    --danger-bg:#3A211E;
+    --success:#7FBE8F;
+    --success-bg:#1E2E22;
+    --warn-bg:#332A18;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.5;
+    min-height:100vh;
+  }
+  ::selection{background:var(--gold-light);}
+  a{color:var(--maroon);}
+
+  #loginScreen{
+    position:fixed;inset:0;background:linear-gradient(160deg,var(--maroon) 0%,var(--maroon-dark) 100%);
+    z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  #loginScreen.hidden{display:none;}
+  .login-card{
+    background:var(--panel);border-radius:16px;padding:32px 26px;max-width:380px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-logo{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px;}
+  .login-logo img{width:64px;height:64px;border-radius:50%;box-shadow:0 0 0 2px rgba(199,154,60,0.5);}
+  .login-logo .name{font-family:var(--font-display);font-style:italic;font-weight:600;font-size:22px;color:var(--maroon);}
+  .login-tabs{display:flex;gap:4px;background:var(--cream);border-radius:9px;padding:4px;margin-bottom:18px;}
+  .login-tabs button{
+    flex:1;background:none;border:none;padding:9px;border-radius:7px;font-size:13.5px;font-weight:600;
+    color:var(--ink-soft);cursor:pointer;font-family:var(--font-body);
+  }
+  .login-tabs button.active{background:var(--panel);color:var(--maroon);box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+  .login-field{margin-bottom:12px;}
+  .login-field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
+  .login-field input{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;
+    font-family:var(--font-body);background:var(--cream);color:var(--ink);
+  }
+  .login-error{color:var(--danger);font-size:12.5px;margin:2px 0 10px 0;min-height:1em;}
+  .login-submit{
+    width:100%;background:var(--maroon);color:#fff;border:none;padding:11px;border-radius:8px;
+    font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font-body);margin-top:4px;
+  }
+  .login-submit:hover{background:var(--maroon-dark);}
+  .login-submit:disabled{opacity:0.6;cursor:not-allowed;}
+  .login-forgot{
+    display:block;text-align:center;margin-top:14px;font-size:12.5px;color:var(--ink-soft);
+    background:none;border:none;cursor:pointer;font-family:var(--font-body);text-decoration:underline;
+  }
+
+  .app-header{
+    background:linear-gradient(135deg,var(--maroon) 0%,var(--maroon-dark) 100%);
+    color:#fff;
+    padding:22px 20px 0 20px;
+    position:sticky;top:0;z-index:20;
+  }
+  .header-top{
+    display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    max-width:1180px;margin:0 auto;flex-wrap:wrap;
+  }
+  .brand{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-style:italic;
+    font-size:27px;
+    letter-spacing:0.2px;
+    display:flex; align-items:center; gap:10px;
+    color:var(--gold);
+    text-shadow:0 1px 12px rgba(199,154,60,0.35);
+  }
+  .brand-logo{
+    width:42px;height:42px;border-radius:50%;object-fit:cover;
+    box-shadow:0 0 0 2px rgba(199,154,60,0.55);
+  }
+  .brand .sub{
+    font-family:var(--font-body);
+    font-style:normal;
+    font-weight:500;
+    font-size:12.5px;
+    color:rgba(255,255,255,0.75);
+    align-self:flex-end;
+    margin-bottom:3px;
+  }
+  .header-actions{display:flex;align-items:center;gap:10px;}
+  .sync-pill{
+    font-size:12px;
+    display:flex;align-items:center;gap:6px;
+    padding:5px 10px;
+    border-radius:20px;
+    background:rgba(255,255,255,0.12);
+    color:#fff;
+  }
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:#7FBE8F;}
+  .sync-dot.off{background:#E5786C;}
+  .menu-btn{
+    background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.18);
+    color:#fff;width:34px;height:34px;border-radius:8px;font-size:16px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .menu-btn:hover{background:rgba(255,255,255,0.2);}
+
+  .drawer-overlay{
+    position:fixed;inset:0;background:rgba(20,14,10,0.4);z-index:150;
+    display:none;
+  }
+  .drawer-overlay.show{display:block;}
+  .drawer{
+    position:fixed;top:0;right:0;bottom:0;width:340px;max-width:92vw;
+    background:var(--panel);z-index:151;box-shadow:-12px 0 40px rgba(0,0,0,0.2);
+    transform:translateX(100%);transition:transform .22s ease;
+    display:flex;flex-direction:column;
+  }
+  .drawer-overlay.show .drawer{transform:translateX(0);}
+  .drawer-head{
+    background:linear-gradient(135deg,var(--maroon) 0%,var(--maroon-dark) 100%);
+    color:#fff;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .drawer-head h3{color:#fff;font-size:17px;margin:0;}
+  .drawer-close{background:rgba(255,255,255,0.12);border:none;color:#fff;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:15px;}
+  .drawer-body{padding:16px 18px;overflow-y:auto;flex:1;}
+  .drawer-section{margin-bottom:22px;}
+  .drawer-section h4{
+    font-family:var(--font-display);font-size:14.5px;margin:0 0 4px 0;color:var(--ink);
+  }
+  .drawer-section .desc{font-size:12px;color:var(--ink-soft);margin:0 0 10px 0;}
+  .drawer-nav-btn{
+    width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);
+    padding:11px 13px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink);
+    cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;
+  }
+  .drawer-nav-btn:hover{border-color:var(--gold);background:var(--gold-light);}
+  .drawer-nav-btn .arrow{color:var(--ink-soft);font-weight:400;}
+  .drawer-nav-btn.danger-nav{color:var(--danger);border-color:var(--danger-bg);background:var(--danger-bg);}
+  .drawer-nav-btn.danger-nav:hover{border-color:var(--danger);background:var(--danger-bg);}
+  .drawer-nav-btn.danger-nav .arrow{color:var(--danger);}
+  .chip-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+  .chip-row{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--cream);font-size:13px;
+  }
+  .chip-row .chip-actions{display:flex;gap:4px;}
+  .chip-row button{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;padding:2px 5px;}
+  .chip-row button:hover{color:var(--danger);}
+  .add-inline{display:flex;gap:6px;margin-top:4px;}
+  .add-inline input{flex:1;}
+  .drawer-back{background:none;border:none;color:var(--ink-soft);font-size:13px;cursor:pointer;padding:0 0 10px 0;display:flex;align-items:center;gap:4px;}
+  .drawer-back:hover{color:var(--maroon);}
+  .account-box{
+    background:var(--cream);border:1px solid var(--line);border-radius:9px;padding:12px 14px;font-size:13px;
+  }
+  .account-box div{margin-bottom:6px;}
+  .account-box div:last-child{margin-bottom:0;}
+  nav.tabs{
+    max-width:1180px;margin:16px auto 0 auto;
+    display:flex;gap:2px;overflow-x:auto;
+    border-bottom:1px solid rgba(255,255,255,0.18);
+  }
+  nav.tabs button{
+    background:none;border:none;color:rgba(255,255,255,0.72);
+    padding:10px 16px 12px 16px;font-family:var(--font-body);
+    font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;
+    border-bottom:2px solid transparent;letter-spacing:0.1px;
+  }
+  nav.tabs button:hover{color:#fff;}
+  nav.tabs button.active{color:#fff;border-bottom-color:var(--gold);}
+
+  main{max-width:1180px;margin:0 auto;padding:22px 20px 60px 20px;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  h1,h2,h3{font-family:var(--font-display);font-weight:600;margin:0 0 4px 0;color:var(--ink);}
+  .panel-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+  .panel-head h2{font-size:21px;}
+  .panel-head p{margin:2px 0 0 0;color:var(--ink-soft);font-size:13px;}
+
+  .btn{
+    font-family:var(--font-body);
+    background:var(--maroon);color:#fff;border:none;
+    padding:9px 16px;border-radius:8px;font-size:13.5px;font-weight:600;
+    cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn:hover{background:var(--maroon-dark);}
+  .btn.secondary{background:transparent;color:var(--maroon);border:1px solid var(--maroon);}
+  .btn.secondary:hover{background:var(--gold-light);}
+  .btn.ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line);}
+  .btn.danger{background:var(--danger);}
+  .btn.danger:hover{background:#8A251C;}
+  .btn.small{padding:5px 10px;font-size:12px;border-radius:6px;}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px;}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;
+  }
+  .card .label{font-size:11.5px;color:var(--ink-soft);text-transform:none;font-weight:600;}
+  .card .value{font-family:var(--font-display);font-size:24px;font-weight:600;margin-top:4px;}
+  .card.warn{border-color:#D8B26A;background:var(--warn-bg);}
+  .card.warn .value{color:var(--danger);}
+
+  .section-block{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:20px;}
+  .section-block h3{font-size:15.5px;margin-bottom:10px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{
+    text-align:left;font-size:11.5px;color:var(--ink-soft);font-weight:600;
+    padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--gold-light);}
+  .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--line);}
+  .table-wrap table{border:none;}
+  .table-wrap .section-block{border:none;padding:0;}
+  .num{text-align:right;font-variant-numeric:tabular-nums;}
+  .muted{color:var(--ink-soft);}
+  .tag{
+    display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
+  }
+  .tag.in-house{background:var(--success-bg);color:var(--success);}
+  .tag.online{background:#DDE6F5;color:#31538F;}
+  :root[data-theme="dark"] .tag.online, :root:not([data-theme="light"]) .tag.online{ @media (prefers-color-scheme: dark){background:#22314F;color:#9AB4E8;} }
+  .tag.exhibition{background:var(--wine-bg);color:var(--wine);}
+  .tag.low{background:var(--danger-bg);color:var(--danger);}
+  .tag.ok{background:var(--success-bg);color:var(--success);}
+
+  .empty{padding:30px 10px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+  .filters{
+    display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 14px;
+  }
+  .filters input, .filters select{
+    font-family:var(--font-body);
+    padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--cream);color:var(--ink);font-size:13px;
+  }
+  .filters label{font-size:11.5px;font-weight:600;color:var(--ink-soft);display:flex;flex-direction:column;gap:4px;}
+
+  .card, .section-block, .table-wrap, .modal{ box-shadow:0 1px 3px rgba(60,40,20,0.05); }
+  .card{ transition:box-shadow .15s ease; }
+
+  .thumb{
+    width:42px;height:42px;border-radius:8px;object-fit:cover;display:block;
+    border:1px solid var(--line);
+  }
+  .thumb-placeholder{
+    width:42px;height:42px;border-radius:8px;background:var(--gold-light);
+    display:flex;align-items:center;justify-content:center;font-size:18px;
+    border:1px solid var(--line);
+  }
+  .photo-col{width:52px;}
+  .photo-upload{display:flex;align-items:center;gap:14px;}
+  .photo-preview{
+    width:76px;height:76px;border-radius:10px;object-fit:cover;
+    border:1px solid var(--line);flex-shrink:0;
+  }
+  .photo-preview-placeholder{
+    width:76px;height:76px;border-radius:10px;background:var(--gold-light);
+    display:flex;align-items:center;justify-content:center;font-size:28px;
+    border:1px solid var(--line);flex-shrink:0;
+  }
+  .photo-actions{display:flex;flex-direction:column;gap:6px;}
+  .photo-actions input[type=file]{font-size:12px;max-width:220px;color:var(--ink-soft);}
+
+  .sample-banner{
+    background:var(--gold-light);border:1px dashed var(--gold);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;
+    gap:12px;flex-wrap:wrap;
+  }
+  .sample-banner p{margin:0;font-size:13px;color:var(--ink);}
+  .sample-banner p strong{display:block;font-family:var(--font-display);font-size:15px;margin-bottom:2px;}
+
+  .report-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+  .report-tabs button{
+    font-family:var(--font-body);
+    background:var(--panel);border:1px solid var(--line);color:var(--ink-soft);
+    padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;
+  }
+  .report-tabs button.active{background:var(--maroon);border-color:var(--maroon);color:#fff;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(30,20,15,0.45);
+    display:none;align-items:flex-start;justify-content:center;z-index:300;
+    padding:5vh 16px;overflow-y:auto;
+  }
+  .modal-overlay.show{display:flex;}
+  #miniOverlay{z-index:350;}
+  .modal{
+    background:var(--panel);border-radius:14px;max-width:520px;width:100%;
+    padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.25);
+  }
+  .modal h3{font-size:18px;margin-bottom:14px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-grid .full{grid-column:1/-1;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;font-weight:600;color:var(--ink-soft);}
+  .field input, .field select, .field textarea{
+    font-family:var(--font-body);
+    padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;
+    background:var(--panel);color:var(--ink);width:100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .modal-close{position:absolute;}
+
+  .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:400;display:flex;flex-direction:column;gap:8px;}
+  .toast{
+    background:var(--ink);color:var(--cream);padding:10px 16px;border-radius:8px;font-size:13px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.2);max-width:320px;
+  }
+  .toast.error{background:var(--danger);}
+  .toast.success{background:var(--success);}
+
+  .row-actions{display:flex;gap:6px;}
+  .stock-badge{font-weight:700;}
+  .profit-pos{color:var(--success);font-weight:600;}
+  .profit-neg{color:var(--danger);font-weight:600;}
+
+  .sub-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;}
+
+  ::-webkit-scrollbar{height:8px;width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;}
+
+  @media (max-width:640px){
+    .form-grid{grid-template-columns:1fr;}
+    .cards{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <img id="loginLogoImg" alt="Moon's Boutique logo">
+      <div class="name">Moon's Boutique</div>
+    </div>
+    <div class="login-tabs" id="loginTabs">
+      <button type="button" data-authmode="login" class="active">Log in</button>
+      <button type="button" data-authmode="signup">Sign up</button>
+    </div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="authEmail" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="authPassword" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="authError"></div>
+    <button class="login-submit" id="authSubmit" type="button">Log in</button>
+    <button class="login-forgot" id="authForgot" type="button">Forgot password?</button>
+  </div>
+</div>
+
+<div class="app-header">
+  <div class="header-top">
+    <div class="brand"><img class="brand-logo" alt="Moon's Boutique logo" src="data:image/jpeg;base64,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">Moon's Boutique<span class="sub">Inventory · Sales · Purchasing</span></div>
+    <div class="header-actions">
+      <div class="sync-pill" id="syncPill"><span class="sync-dot off" id="syncDot"></span><span id="syncText">Connecting…</span></div>
+      <button class="menu-btn" id="btnMenu" aria-label="Open menu" type="button">&#9776;</button>
+    </div>
+  </div>
+  <nav class="tabs" id="tabNav">
+    <button data-tab="dashboard" class="active">Dashboard</button>
+    <button data-tab="inventory">Inventory</button>
+    <button data-tab="purchases">Purchases</button>
+    <button data-tab="sales">Sales</button>
+    <button data-tab="ledger">Stock In &amp; Out</button>
+    <button data-tab="reports">Reports</button>
+  </nav>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay">
+  <div class="drawer">
+    <div class="drawer-head">
+      <h3 id="drawerTitle">Menu</h3>
+      <button class="drawer-close" id="drawerClose" type="button">✕</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </div>
+</div>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <section class="tab-panel active" id="tab-dashboard">
+    <div class="panel-head">
+      <div><h2>Dashboard</h2><p>A quick look at where things stand today.</p></div>
+    </div>
+    <div class="cards" id="dashCards"></div>
+    <div class="section-block">
+      <h3>Low stock — needs reordering</h3>
+      <div id="dashLowStock"></div>
+    </div>
+    <div class="section-block">
+      <h3>Recent activity</h3>
+      <div id="dashRecent"></div>
+    </div>
+  </section>
+
+  <!-- INVENTORY -->
+  <section class="tab-panel" id="tab-inventory">
+    <div class="panel-head">
+      <div><h2>Inventory</h2><p>Every saree you stock, with cost, price and current quantity.</p></div>
+      <button class="btn" id="btnAddItem">+ Add item</button>
+    </div>
+    <div class="filters">
+      <label>Search<input type="text" id="invSearch" placeholder="Name, category, wholesaler…"></label>
+      <label>Sort<select id="invSort">
+        <option value="name">Name</option>
+        <option value="stock-asc">Stock: low to high</option>
+        <option value="stock-desc">Stock: high to low</option>
+        <option value="value-desc">Stock value: high to low</option>
+      </select></label>
+    </div>
+    <div class="table-wrap"><div id="invTable"></div></div>
+  </section>
+
+  <!-- PURCHASES -->
+  <section class="tab-panel" id="tab-purchases">
+    <div class="panel-head">
+      <div><h2>Purchases</h2><p>Stock coming in from your wholesalers.</p></div>
+      <button class="btn" id="btnAddPurchase">+ Record purchase</button>
+    </div>
+    <div class="filters">
+      <label>Wholesaler<input type="text" id="purWholesalerFilter" placeholder="Filter by wholesaler"></label>
+      <label>From<input type="date" id="purFrom"></label>
+      <label>To<input type="date" id="purTo"></label>
+    </div>
+    <div class="table-wrap"><div id="purTable"></div></div>
+  </section>
+
+  <!-- SALES -->
+  <section class="tab-panel" id="tab-sales">
+    <div class="panel-head">
+      <div><h2>Sales</h2><p>What's gone out — from exhibitions, your in-house store, or online.</p></div>
+      <button class="btn" id="btnAddSale">+ Record sale</button>
+    </div>
+    <div class="filters">
+      <label>Channel<select id="saleChannelFilter">
+        <option value="">All channels</option>
+        <option value="Exhibition">Exhibition</option>
+        <option value="In-house Store">In-house Store</option>
+        <option value="Online">Online</option>
+      </select></label>
+      <label>From<input type="date" id="saleFrom"></label>
+      <label>To<input type="date" id="saleTo"></label>
+    </div>
+    <div class="table-wrap"><div id="saleTable"></div></div>
+  </section>
+
+  <!-- STOCK LEDGER -->
+  <section class="tab-panel" id="tab-ledger">
+    <div class="panel-head">
+      <div><h2>Stock In &amp; Out</h2><p>Every time stock came in or went out — from purchases, sales, or your own corrections.</p></div>
+      <button class="btn" id="btnAddAdjustment">+ Manual adjustment</button>
+    </div>
+    <div class="filters">
+      <label>Type<select id="ledgerTypeFilter">
+        <option value="">In &amp; out</option>
+        <option value="in">Stock in</option>
+        <option value="out">Stock out</option>
+      </select></label>
+      <label>Item<input type="text" id="ledgerItemFilter" placeholder="Filter by item name"></label>
+      <label>From<input type="date" id="ledgerFrom"></label>
+      <label>To<input type="date" id="ledgerTo"></label>
+    </div>
+    <div class="table-wrap"><div id="ledgerTable"></div></div>
+  </section>
+
+  <!-- REPORTS -->
+  <section class="tab-panel" id="tab-reports">
+    <div class="panel-head">
+      <div><h2>Reports</h2><p>Choose a report, set a date range if needed, and export to CSV any time.</p></div>
+    </div>
+    <div class="report-tabs" id="reportTabs">
+      <button data-report="stock" class="active">Stock Summary</button>
+      <button data-report="lowstock">Low Stock</button>
+      <button data-report="sales">Sales</button>
+      <button data-report="purchases">Purchases</button>
+      <button data-report="pnl">Profit &amp; Loss</button>
+      <button data-report="ledger">Stock In &amp; Out</button>
+    </div>
+    <div id="reportRangeRow" class="filters"></div>
+    <div id="reportBody"></div>
+  </section>
+
+</main>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox"></div>
+</div>
+<div class="modal-overlay" id="miniOverlay">
+  <div class="modal" id="miniBox" style="max-width:380px;"></div>
+</div>
+<datalist id="wholesalerList"></datalist>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- constants ---------------- */
+var DEFAULT_CATEGORIES = ["Banarasi","Kanjivaram","Silk","Cotton","Georgette","Chiffon","Chikankari","Linen","Tussar","Organza","Patola","Other"];
+var CHANNELS = ["Exhibition","In-house Store","Online"];
+
+/* ---------------- state ---------------- */
+var state = {
+  inventory: [], purchases: [], sales: [], stockLog: [],
+  categories: [], wholesalers: [], business: {},
+  dbReady:false, dbOffline:false
+};
+var db = null;
+var currentTab = "dashboard";
+var currentReport = "stock";
+var currentDrawerView = "home";
+var categoriesSeeded = false;
+
+/* ---------------- utils ---------------- */
+function $(sel, root){ return (root||document).querySelector(sel); }
+function $all(sel, root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); }
+function escapeHtml(s){
+  if(s===undefined||s===null) return "";
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+function fmtMoney(n){
+  n = Number(n)||0;
+  var neg = n<0; n = Math.abs(n);
+  var s = n.toLocaleString('en-IN', {maximumFractionDigits:0});
+  return (neg?"-":"") + "₹" + s;
+}
+function fmtNum(n){ return Number(n||0).toLocaleString('en-IN'); }
+function todayStr(){
+  var d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,'0')+"-"+String(d.getDate()).padStart(2,'0');
+}
+function monthStartStr(){
+  var d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,'0')+"-01";
+}
+function nowIso(){ return new Date().toISOString(); }
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function genSku(name){
+  var base = (name||"ITEM").toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4) || "ITEM";
+  return base + "-" + Math.floor(1000+Math.random()*9000);
+}
+
+function toast(msg, type){
+  var wrap = $("#toastWrap");
+  var el = document.createElement("div");
+  el.className = "toast" + (type?(" "+type):"");
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(function(){ el.remove(); }, 3800);
+}
+function compressImageToDataUrl(file, maxDim, quality){
+  maxDim = maxDim || 480; quality = quality || 0.6;
+  return new Promise(function(resolve, reject){
+    var img = new Image();
+    var reader = new FileReader();
+    reader.onerror = function(){ reject(new Error("Couldn't read that file.")); };
+    reader.onload = function(){
+      img.onerror = function(){ reject(new Error("That doesn't look like a valid image.")); };
+      img.onload = function(){
+        var w = img.width, h = img.height;
+        var scale = Math.min(1, maxDim / Math.max(w, h));
+        var cw = Math.round(w*scale), ch = Math.round(h*scale);
+        var canvas = document.createElement("canvas");
+        canvas.width = cw; canvas.height = ch;
+        canvas.getContext("2d").drawImage(img, 0, 0, cw, ch);
+        var dataUrl = canvas.toDataURL("image/jpeg", quality);
+        if(dataUrl.length > 700000){ dataUrl = canvas.toDataURL("image/jpeg", 0.4); }
+        resolve(dataUrl);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------------- firebase bootstrap ---------------- */
+var firebaseConfig = {
+  apiKey: "AIzaSyAsknqHr0x59RcXN_IjAuZb0AG5zI4fIBs",
+  authDomain: "moon-s-boutique.firebaseapp.com",
+  projectId: "moon-s-boutique",
+  storageBucket: "moon-s-boutique.firebasestorage.app",
+  messagingSenderId: "138750429826",
+  appId: "1:138750429826:web:6cfb853ffba2ba114dc29b",
+  measurementId: "G-BWZ7C5WTC2"
+};
+firebase.initializeApp(firebaseConfig);
+var auth = firebase.auth();
+var firestore = firebase.firestore();
+var unsubscribers = [];
+
+/* Wraps Firestore so the rest of the app can keep using the same
+   db.collection(name) / db.doc("a/b") calls as before — every read/write
+   is transparently scoped under users/{uid}/... so each account only
+   ever sees its own data. */
+function makeDbShim(uidVal){
+  var root = firestore.collection("users").doc(uidVal);
+  return {
+    collection: function(name){ return root.collection(name); },
+    doc: function(path){
+      var parts = path.split("/");
+      var ref = root;
+      for(var i=0;i<parts.length;i++){ ref = (i%2===0) ? ref.collection(parts[i]) : ref.doc(parts[i]); }
+      return ref;
+    }
+  };
+}
+
+auth.onAuthStateChanged(function(user){
+  unsubscribers.forEach(function(u){ try{ u(); }catch(e){} });
+  unsubscribers = [];
+  if(user){
+    db = makeDbShim(user.uid);
+    state.dbOffline = false;
+    $("#loginScreen").classList.add("hidden");
+    setSyncStatus(true, "Synced");
+    subscribeAll();
+  } else {
+    db = null;
+    state.dbOffline = true;
+    state.inventory = []; state.purchases = []; state.sales = []; state.stockLog = [];
+    state.categories = []; state.wholesalers = []; state.business = {};
+    categoriesSeeded = false;
+    $("#loginScreen").classList.remove("hidden");
+    setSyncStatus(false, "Not signed in");
+    renderAll();
+  }
+});
+
+function setSyncStatus(ok, text){
+  $("#syncDot").className = "sync-dot" + (ok?"":" off");
+  $("#syncText").textContent = text;
+}
+
+/* ---------------- login screen wiring ---------------- */
+(function(){
+  var headerLogo = $(".brand-logo");
+  if(headerLogo) $("#loginLogoImg").src = headerLogo.src;
+  var mode = "login";
+  function setAuthMode(m){
+    mode = m;
+    $all("#loginTabs button").forEach(function(b){ b.classList.toggle("active", b.dataset.authmode===m); });
+    $("#authSubmit").textContent = m==="login" ? "Log in" : "Sign up";
+    $("#authError").textContent = "";
+  }
+  $all("#loginTabs button").forEach(function(b){
+    b.addEventListener("click", function(){ setAuthMode(b.dataset.authmode); });
+  });
+  async function submitAuth(){
+    var email = $("#authEmail").value.trim();
+    var pass = $("#authPassword").value;
+    var errEl = $("#authError");
+    errEl.textContent = "";
+    if(!email || !pass){ errEl.textContent = "Enter both email and password."; return; }
+    if(pass.length < 6){ errEl.textContent = "Password must be at least 6 characters."; return; }
+    var btn = $("#authSubmit");
+    btn.disabled = true;
+    try{
+      if(mode==="login"){
+        await auth.signInWithEmailAndPassword(email, pass);
+      } else {
+        await auth.createUserWithEmailAndPassword(email, pass);
+      }
+    }catch(e){
+      errEl.textContent = firebaseErrorMessage(e);
+    }finally{
+      btn.disabled = false;
+    }
+  }
+  $("#authSubmit").addEventListener("click", submitAuth);
+  $("#authPassword").addEventListener("keydown", function(e){ if(e.key==="Enter") submitAuth(); });
+  $("#authForgot").addEventListener("click", async function(){
+    var email = $("#authEmail").value.trim();
+    var errEl = $("#authError");
+    if(!email){ errEl.textContent = "Enter your email above first, then tap this again."; return; }
+    try{
+      await auth.sendPasswordResetEmail(email);
+      errEl.style.color = "var(--success)";
+      errEl.textContent = "Password reset email sent — check your inbox.";
+    }catch(e){
+      errEl.style.color = "";
+      errEl.textContent = firebaseErrorMessage(e);
+    }
+  });
+})();
+function firebaseErrorMessage(e){
+  var code = e && e.code || "";
+  var map = {
+    "auth/invalid-email": "That email address doesn't look right.",
+    "auth/user-not-found": "No account with that email — try Sign up instead.",
+    "auth/wrong-password": "Incorrect password.",
+    "auth/invalid-credential": "Incorrect email or password.",
+    "auth/email-already-in-use": "An account already exists with that email — try Log in instead.",
+    "auth/weak-password": "Password must be at least 6 characters.",
+    "auth/too-many-requests": "Too many attempts — please wait a bit and try again."
+  };
+  return map[code] || (e && e.message) || "Something went wrong. Please try again.";
+}
+
+function subscribeAll(){
+  unsubscribers.push(db.collection("inventory").onSnapshot(function(snap){
+    state.inventory = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    state.inventory.sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
+    renderAll();
+  }, function(err){ console.error(err); toast("Inventory sync error: "+err.message, "error"); }));
+
+  unsubscribers.push(db.collection("purchases").orderBy("createdAt","desc").onSnapshot(function(snap){
+    state.purchases = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    renderAll();
+  }, function(err){ console.error(err); }));
+
+  unsubscribers.push(db.collection("sales").orderBy("createdAt","desc").onSnapshot(function(snap){
+    state.sales = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    renderAll();
+  }, function(err){ console.error(err); }));
+
+  unsubscribers.push(db.collection("stockLog").orderBy("createdAt","desc").onSnapshot(function(snap){
+    state.stockLog = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    renderAll();
+  }, function(err){ console.error(err); }));
+
+  unsubscribers.push(db.collection("categories").onSnapshot(function(snap){
+    state.categories = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    state.categories.sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
+    if(!categoriesSeeded && snap.metadata && !snap.metadata.fromCache && state.categories.length===0){
+      categoriesSeeded = true;
+      seedDefaultCategories();
+    }
+    renderAll();
+  }, function(err){ console.error(err); }));
+
+  unsubscribers.push(db.collection("wholesalers").onSnapshot(function(snap){
+    state.wholesalers = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    state.wholesalers.sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
+    renderWholesalerDatalist();
+    if(currentDrawerView==="wholesalers") renderDrawer();
+  }, function(err){ console.error(err); }));
+
+  unsubscribers.push(db.doc("settings/business").onSnapshot(function(snap){
+    state.business = snap.exists ? snap.data() : {};
+    if(currentDrawerView==="business") renderDrawer();
+  }, function(err){ console.error(err); }));
+}
+async function seedDefaultCategories(){
+  try{
+    for(var i=0;i<DEFAULT_CATEGORIES.length;i++){
+      await db.collection("categories").add({name:DEFAULT_CATEGORIES[i], createdAt: nowIso()});
+    }
+  }catch(e){ console.error(e); }
+}
+
+/* ---------------- data operations ---------------- */
+function findItem(id){
+  for(var i=0;i<state.inventory.length;i++){ if(state.inventory[i].id===id) return state.inventory[i]; }
+  return null;
+}
+
+async function addItem(data){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+  await db.collection("inventory").add({
+    name:data.name, sku:data.sku, category:data.category, color:data.color,
+    wholesaler:data.wholesaler, costPrice:data.costPrice, sellingPrice:data.sellingPrice,
+    stock:data.stock, reorderLevel:data.reorderLevel, notes:data.notes||"",
+    photoData: data.photoData || null, createdAt: nowIso()
+  });
+  toast("Item added.", "success");
+}
+async function updateItem(id, data){
+  if(state.dbOffline) return;
+  await db.doc("inventory/"+id).update(data);
+  toast("Item updated.", "success");
+}
+async function deleteItem(id){
+  if(state.dbOffline) return;
+  await db.doc("inventory/"+id).delete();
+  toast("Item deleted.", "success");
+}
+
+async function recordPurchase(data){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+  var item = findItem(data.itemId);
+  if(!item) return;
+  var newStock = (item.stock||0) + data.qty;
+  var updates = { stock:newStock };
+  if(data.updateCost) updates.costPrice = data.unitCost;
+  await db.doc("inventory/"+item.id).update(updates);
+  var pRef = await db.collection("purchases").add({
+    date:data.date, wholesaler:data.wholesaler, itemId:item.id, itemName:item.name,
+    qty:data.qty, unitCost:data.unitCost, totalCost:data.qty*data.unitCost,
+    notes:data.notes||"", createdAt: nowIso()
+  });
+  await db.collection("stockLog").add({
+    date:data.date, type:"in", itemId:item.id, itemName:item.name, qty:data.qty,
+    reason:"Purchase", detail:data.wholesaler, refType:"purchase", refId:pRef.id, createdAt: nowIso()
+  });
+  toast("Purchase recorded.", "success");
+}
+async function recordPurchaseWithNewItem(itemData, purchaseData){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+  var ref = await db.collection("inventory").add({
+    name:itemData.name, sku:itemData.sku, category:itemData.category, color:itemData.color,
+    wholesaler:purchaseData.wholesaler, costPrice:purchaseData.unitCost, sellingPrice:itemData.sellingPrice,
+    stock:purchaseData.qty, reorderLevel:itemData.reorderLevel, notes:"", photoData:null, createdAt: nowIso()
+  });
+  var pRef = await db.collection("purchases").add({
+    date:purchaseData.date, wholesaler:purchaseData.wholesaler, itemId:ref.id, itemName:itemData.name,
+    qty:purchaseData.qty, unitCost:purchaseData.unitCost, totalCost:purchaseData.qty*purchaseData.unitCost,
+    notes:purchaseData.notes||"", createdAt: nowIso()
+  });
+  await db.collection("stockLog").add({
+    date:purchaseData.date, type:"in", itemId:ref.id, itemName:itemData.name, qty:purchaseData.qty,
+    reason:"Purchase", detail:purchaseData.wholesaler, refType:"purchase", refId:pRef.id, createdAt: nowIso()
+  });
+  return ref.id;
+}
+async function deletePurchase(p){
+  if(state.dbOffline) return;
+  var item = findItem(p.itemId);
+  if(item){
+    var newStock = Math.max(0, (item.stock||0) - p.qty);
+    await db.doc("inventory/"+item.id).update({stock:newStock});
+  }
+  var logEntry = state.stockLog.find(function(l){ return l.refType==="purchase" && l.refId===p.id; });
+  if(logEntry) await db.doc("stockLog/"+logEntry.id).delete();
+  await db.doc("purchases/"+p.id).delete();
+  toast("Purchase deleted and stock reversed.", "success");
+}
+
+async function recordSale(data){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+  var item = findItem(data.itemId);
+  if(!item) return;
+  var newStock = (item.stock||0) - data.qty;
+  if(newStock < 0) newStock = 0;
+  await db.doc("inventory/"+item.id).update({stock:newStock});
+  var total = data.qty*data.unitPrice - (data.discount||0);
+  var sRef = await db.collection("sales").add({
+    date:data.date, channel:data.channel, itemId:item.id, itemName:item.name,
+    qty:data.qty, unitPrice:data.unitPrice, discount:data.discount||0, totalPrice:total,
+    costPriceAtSale: item.costPrice||0, customer:data.customer||"", notes:data.notes||"",
+    createdAt: nowIso()
+  });
+  await db.collection("stockLog").add({
+    date:data.date, type:"out", itemId:item.id, itemName:item.name, qty:data.qty,
+    reason:"Sale", detail:data.channel, refType:"sale", refId:sRef.id, createdAt: nowIso()
+  });
+  toast("Sale recorded.", "success");
+}
+async function deleteSale(s){
+  if(state.dbOffline) return;
+  var item = findItem(s.itemId);
+  if(item){
+    var newStock = (item.stock||0) + s.qty;
+    await db.doc("inventory/"+item.id).update({stock:newStock});
+  }
+  var logEntry = state.stockLog.find(function(l){ return l.refType==="sale" && l.refId===s.id; });
+  if(logEntry) await db.doc("stockLog/"+logEntry.id).delete();
+  await db.doc("sales/"+s.id).delete();
+  toast("Sale deleted and stock restored.", "success");
+}
+
+async function recordAdjustment(data){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+  var item = findItem(data.itemId);
+  if(!item) return;
+  var delta = data.type==="in" ? data.qty : -data.qty;
+  var newStock = Math.max(0, (item.stock||0) + delta);
+  await db.doc("inventory/"+item.id).update({stock:newStock});
+  await db.collection("stockLog").add({
+    date:data.date, type:data.type, itemId:item.id, itemName:item.name, qty:data.qty,
+    reason:data.reason||"Adjustment", detail:data.notes||"", refType:"adjustment", createdAt: nowIso()
+  });
+  toast("Stock adjusted.", "success");
+}
+
+/* ---------------- sample data ---------------- */
+function shiftDate(daysAgo){
+  var d = new Date(); d.setDate(d.getDate()-daysAgo);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,'0')+"-"+String(d.getDate()).padStart(2,'0');
+}
+async function seedSampleData(){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+  var msg = state.inventory.length
+    ? "Add a few sample sarees, purchases and sales alongside what you already have? You can delete any of it later."
+    : "Add a few sample sarees, purchases and sales so you can see how everything looks? You can delete any of it later.";
+  if(!(await appConfirm(msg, {title:"Load sample data?", confirmLabel:"Load sample data"}))) return;
+  var samples = [
+    {name:"Rani Pink Banarasi Silk", category:"Banarasi", color:"Rani Pink", wholesaler:"Varanasi Silk House", costPrice:2800, sellingPrice:4500, stock:6, reorderLevel:2},
+    {name:"Emerald Kanjivaram", category:"Kanjivaram", color:"Emerald Green", wholesaler:"Kanchipuram Weavers Co.", costPrice:5200, sellingPrice:8500, stock:3, reorderLevel:2},
+    {name:"Ivory Chikankari Georgette", category:"Chikankari", color:"Ivory", wholesaler:"Lucknow Chikan Emporium", costPrice:1800, sellingPrice:3200, stock:8, reorderLevel:3},
+    {name:"Mustard Tussar Silk", category:"Tussar", color:"Mustard Yellow", wholesaler:"Bhagalpur Silk Traders", costPrice:2100, sellingPrice:3600, stock:1, reorderLevel:2},
+    {name:"Navy Organza Floral", category:"Organza", color:"Navy Blue", wholesaler:"Surat Textile Mart", costPrice:1500, sellingPrice:2800, stock:5, reorderLevel:2},
+    {name:"Maroon Cotton Handloom", category:"Cotton", color:"Maroon", wholesaler:"Bengal Handloom Co.", costPrice:900, sellingPrice:1800, stock:12, reorderLevel:4}
+  ];
+  try{
+    var added = [];
+    for(var i=0;i<samples.length;i++){
+      var s = samples[i];
+      var ref = await db.collection("inventory").add({
+        name:s.name, sku:genSku(s.name), category:s.category, color:s.color, wholesaler:s.wholesaler,
+        costPrice:s.costPrice, sellingPrice:s.sellingPrice, stock:s.stock, reorderLevel:s.reorderLevel,
+        notes:"Sample data", photoData:null, createdAt: nowIso()
+      });
+      added.push({id:ref.id, name:s.name, wholesaler:s.wholesaler, costPrice:s.costPrice, sellingPrice:s.sellingPrice});
+    }
+    async function txn(col, data){ return db.collection(col).add(Object.assign({}, data, {createdAt: nowIso()})); }
+
+    var p1date = shiftDate(10), p2date = shiftDate(5);
+    await txn("purchases", {date:p1date, wholesaler:added[0].wholesaler, itemId:added[0].id, itemName:added[0].name, qty:4, unitCost:added[0].costPrice, totalCost:4*added[0].costPrice, notes:"Sample data"});
+    await txn("stockLog", {date:p1date, type:"in", itemId:added[0].id, itemName:added[0].name, qty:4, reason:"Purchase", detail:added[0].wholesaler, refType:"purchase-sample"});
+    await txn("purchases", {date:p2date, wholesaler:added[2].wholesaler, itemId:added[2].id, itemName:added[2].name, qty:6, unitCost:added[2].costPrice, totalCost:6*added[2].costPrice, notes:"Sample data"});
+    await txn("stockLog", {date:p2date, type:"in", itemId:added[2].id, itemName:added[2].name, qty:6, reason:"Purchase", detail:added[2].wholesaler, refType:"purchase-sample"});
+
+    var sSpecs = [
+      {idx:0, qty:1, channel:"Exhibition", daysAgo:6, customer:"Walk-in customer"},
+      {idx:2, qty:2, channel:"Online", daysAgo:3, customer:"Instagram order"},
+      {idx:5, qty:1, channel:"In-house Store", daysAgo:1, customer:""},
+      {idx:4, qty:1, channel:"Exhibition", daysAgo:2, customer:"Walk-in customer"}
+    ];
+    for(var j=0;j<sSpecs.length;j++){
+      var sp = sSpecs[j], it = added[sp.idx], date = shiftDate(sp.daysAgo);
+      var total = sp.qty*it.sellingPrice;
+      await txn("sales", {date:date, channel:sp.channel, itemId:it.id, itemName:it.name, qty:sp.qty, unitPrice:it.sellingPrice, discount:0, totalPrice:total, costPriceAtSale:it.costPrice, customer:sp.customer, notes:"Sample data"});
+      await txn("stockLog", {date:date, type:"out", itemId:it.id, itemName:it.name, qty:sp.qty, reason:"Sale", detail:sp.channel, refType:"sale-sample"});
+    }
+    toast("Sample data added — take a look around.", "success");
+  }catch(e){
+    toast("Couldn't add sample data: "+(e&&e.message?e.message:"unknown error"), "error");
+  }
+}
+
+/* ---------------- date validation ---------------- */
+function isFutureDate(dateStr){ return !!dateStr && dateStr > todayStr(); }
+async function validateTxnDate(dateStr){
+  if(!dateStr){ await appAlert("Please pick a date.", "Missing date"); return false; }
+  if(isFutureDate(dateStr)){ await appAlert("That date is in the future. Please pick today or an earlier date.", "Invalid date"); return false; }
+  return true;
+}
+function wireDateRange(fromId, toId, onValid){
+  function run(){
+    var f = $("#"+fromId).value, t = $("#"+toId).value;
+    if(f && t && t < f){
+      appAlert("The \"To\" date can't be earlier than the \"From\" date.", "Invalid date range");
+      return;
+    }
+    onValid();
+  }
+  $("#"+fromId).addEventListener("change", run);
+  $("#"+toId).addEventListener("change", run);
+}
+
+/* ---------------- CSV export ---------------- */
+function toCSV(headers, rows){
+  var esc = function(v){
+    v = v===undefined||v===null ? "" : String(v);
+    if(/[",\n]/.test(v)) v = '"' + v.replace(/"/g,'""') + '"';
+    return v;
+  };
+  var lines = [headers.map(esc).join(",")];
+  rows.forEach(function(r){ lines.push(r.map(esc).join(",")); });
+  return lines.join("\n");
+}
+async function exportCSV(filename, headers, rows){
+  try{
+    var csv = toCSV(headers, rows);
+    var blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    toast("Downloaded "+filename, "success");
+  }catch(e){
+    toast("Couldn't export: "+(e&&e.message?e.message:"unknown error"), "error");
+  }
+}
+
+/* ---------------- tabs ---------------- */
+$all("#tabNav button").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    currentTab = btn.dataset.tab;
+    $all("#tabNav button").forEach(function(b){ b.classList.toggle("active", b===btn); });
+    $all(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
+    $("#tab-"+currentTab).classList.add("active");
+    renderAll();
+  });
+});
+$all("#reportTabs button").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    currentReport = btn.dataset.report;
+    $all("#reportTabs button").forEach(function(b){ b.classList.toggle("active", b===btn); });
+    renderReports();
+  });
+});
+
+$all("#reportTabs button").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    currentReport = btn.dataset.report;
+    $all("#reportTabs button").forEach(function(b){ b.classList.toggle("active", b===btn); });
+    renderReports();
+  });
+});
+
+/* ---------------- settings drawer ---------------- */
+function openDrawer(view){
+  currentDrawerView = view||"home";
+  $("#drawerOverlay").classList.add("show");
+  renderDrawer();
+}
+function closeDrawer(){
+  $("#drawerOverlay").classList.remove("show");
+}
+$("#btnMenu").addEventListener("click", function(){ openDrawer("home"); });
+$("#drawerClose").addEventListener("click", closeDrawer);
+$("#drawerOverlay").addEventListener("click", function(e){
+  if(e.target===$("#drawerOverlay")) closeDrawer();
+});
+
+function renderDrawer(){
+  var titles = {home:"Menu", business:"Business details", categories:"Manage categories", wholesalers:"Manage wholesalers"};
+  $("#drawerTitle").textContent = titles[currentDrawerView] || "Menu";
+  if(currentDrawerView==="home") return renderDrawerHome();
+  if(currentDrawerView==="business") return renderDrawerBusiness();
+  if(currentDrawerView==="categories") return renderDrawerCategories();
+  if(currentDrawerView==="wholesalers") return renderDrawerWholesalers();
+}
+function backButtonHtml(){
+  return '<button class="drawer-back" id="drawerBack" type="button">‹ Back to menu</button>';
+}
+function wireBack(){
+  var b = $("#drawerBack");
+  if(b) b.addEventListener("click", function(){ openDrawer("home"); });
+}
+
+function renderDrawerHome(){
+  var email = (auth.currentUser && auth.currentUser.email) || "";
+  $("#drawerBody").innerHTML =
+    '<div class="drawer-section">'+
+      '<button class="drawer-nav-btn" data-nav="business">Business details<span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" data-nav="categories">Manage categories<span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" data-nav="wholesalers">Manage wholesalers<span class="arrow">›</span></button>'+
+    '</div>'+
+    '<div class="drawer-section">'+
+      '<h4>Data</h4>'+
+      '<button class="drawer-nav-btn" id="btnDrawerSample" type="button">Add sample data<span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn danger-nav" id="btnDrawerDeleteAll" type="button">Delete all data<span class="arrow">›</span></button>'+
+    '</div>'+
+    '<div class="drawer-section">'+
+      '<h4>Account</h4>'+
+      '<p class="desc">Signed in as '+escapeHtml(email)+'</p>'+
+      '<button class="drawer-nav-btn" id="btnDrawerLogout" type="button">Log out<span class="arrow">›</span></button>'+
+    '</div>'+
+    '<div class="drawer-section"><p class="desc">More reports and CSV exports live under the Reports tab.</p></div>';
+  $all("[data-nav]", $("#drawerBody")).forEach(function(b){
+    b.addEventListener("click", function(){ openDrawer(b.dataset.nav); });
+  });
+  $("#btnDrawerSample").addEventListener("click", function(){ closeDrawer(); seedSampleData(); });
+  $("#btnDrawerDeleteAll").addEventListener("click", function(){ closeDrawer(); deleteAllData(); });
+  $("#btnDrawerLogout").addEventListener("click", async function(){
+    closeDrawer();
+    if(await appConfirm("You'll need your email and password to log back in.", {title:"Log out?", confirmLabel:"Log out"})){
+      await auth.signOut();
+    }
+  });
+}
+
+function renderDrawerBusiness(){
+  var biz = state.business||{};
+  $("#drawerBody").innerHTML = backButtonHtml() +
+    '<div class="drawer-section">'+
+      '<h4>Business details</h4>'+
+      '<p class="desc">Shown only to you — handy for your own records and for invoices you write up elsewhere.</p>'+
+      '<div class="field" style="margin-bottom:10px;"><label>Business name</label><input id="biz_name" value="'+escapeHtml(biz.name||"Moon\'s Boutique")+'"></div>'+
+      '<div class="field" style="margin-bottom:10px;"><label>Tagline / Instagram handle</label><input id="biz_tagline" value="'+escapeHtml(biz.tagline||"")+'" placeholder="@moons.boutique"></div>'+
+      '<div class="field" style="margin-bottom:10px;"><label>Phone</label><input id="biz_phone" value="'+escapeHtml(biz.phone||"")+'"></div>'+
+      '<div class="field" style="margin-bottom:10px;"><label>Address</label><textarea id="biz_address" rows="2">'+escapeHtml(biz.address||"")+'</textarea></div>'+
+      '<div class="field" style="margin-bottom:14px;"><label>GST / Tax ID (optional)</label><input id="biz_gst" value="'+escapeHtml(biz.gst||"")+'"></div>'+
+      '<button class="btn small" id="biz_save">Save details</button>'+
+    '</div>';
+  wireBack();
+  $("#biz_save").addEventListener("click", async function(){
+    if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+    await db.doc("settings/business").set({
+      name:$("#biz_name").value.trim(), tagline:$("#biz_tagline").value.trim(),
+      phone:$("#biz_phone").value.trim(), address:$("#biz_address").value.trim(),
+      gst:$("#biz_gst").value.trim(), updatedAt: nowIso()
+    });
+    toast("Business details saved.", "success");
+  });
+}
+
+function renderDrawerCategories(){
+  var rows = state.categories.map(function(c){
+    var used = state.inventory.filter(function(i){return i.category===c.name;}).length;
+    return '<div class="chip-row"><span>'+escapeHtml(c.name)+(used?' <span class="muted">('+used+')</span>':'')+'</span>'+
+      '<div class="chip-actions">'+
+        '<button data-rename="'+c.id+'" title="Rename">Rename</button>'+
+        '<button data-del="'+c.id+'" title="Delete">Delete</button>'+
+      '</div></div>';
+  }).join("");
+  $("#drawerBody").innerHTML = backButtonHtml() +
+    '<div class="drawer-section">'+
+      '<h4>Categories</h4>'+
+      '<p class="desc">These fill the Category dropdown when you add a saree. The number shows how many items use each one.</p>'+
+      '<div class="chip-list">'+(rows || '<span class="hint">No categories yet.</span>')+'</div>'+
+      '<div class="add-inline"><input id="newCatInput" placeholder="New category name"><button class="btn small" id="newCatBtn">Add</button></div>'+
+    '</div>';
+  wireBack();
+  $("#newCatBtn").addEventListener("click", async function(){
+    var val = $("#newCatInput").value.trim();
+    if(!val){ return; }
+    if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+    await addCategoryQuick(val);
+    $("#newCatInput").value = "";
+    toast("Category added.", "success");
+  });
+  $all("[data-rename]", $("#drawerBody")).forEach(function(b){
+    b.addEventListener("click", async function(){
+      var cat = state.categories.filter(function(c){return c.id===b.dataset.rename;})[0];
+      if(!cat) return;
+      var name = await appPrompt("Rename category:", cat.name);
+      if(!name || !name.trim() || name.trim()===cat.name) return;
+      await db.doc("categories/"+cat.id).update({name:name.trim()});
+      toast("Category renamed.", "success");
+    });
+  });
+  $all("[data-del]", $("#drawerBody")).forEach(function(b){
+    b.addEventListener("click", async function(){
+      var cat = state.categories.filter(function(c){return c.id===b.dataset.del;})[0];
+      if(!cat) return;
+      var used = state.inventory.filter(function(i){return i.category===cat.name;}).length;
+      var msg = used ? ('"'+cat.name+'" is used by '+used+' item(s). They\'ll keep the label as plain text, but it won\'t be in the dropdown anymore. Delete it?') : ('Delete category "'+cat.name+'"?');
+      if(!(await appConfirm(msg, {title:"Delete category?", confirmLabel:"Delete", danger:true}))) return;
+      await db.doc("categories/"+cat.id).delete();
+      toast("Category deleted.", "success");
+    });
+  });
+}
+
+function renderDrawerWholesalers(){
+  var rows = state.wholesalers.map(function(w){
+    var used = state.inventory.filter(function(i){return i.wholesaler===w.name;}).length;
+    return '<div class="chip-row"><span>'+escapeHtml(w.name)+(used?' <span class="muted">('+used+')</span>':'')+'</span>'+
+      '<div class="chip-actions">'+
+        '<button data-rename="'+w.id+'" title="Rename">Rename</button>'+
+        '<button data-del="'+w.id+'" title="Delete">Delete</button>'+
+      '</div></div>';
+  }).join("");
+  $("#drawerBody").innerHTML = backButtonHtml() +
+    '<div class="drawer-section">'+
+      '<h4>Wholesalers</h4>'+
+      '<p class="desc">Save your regular suppliers here — they\'ll show up as suggestions when you type a wholesaler name anywhere. You can still type any name freely, this list is just for convenience. Renaming here only updates the suggestion — items and purchases that already used the old name keep it as plain text.</p>'+
+      '<div class="chip-list">'+(rows || '<span class="hint">No wholesalers saved yet.</span>')+'</div>'+
+      '<div class="add-inline"><input id="newWholesalerInput" placeholder="Wholesaler name"><button class="btn small" id="newWholesalerBtn">Add</button></div>'+
+    '</div>';
+  wireBack();
+  $("#newWholesalerBtn").addEventListener("click", async function(){
+    var val = $("#newWholesalerInput").value.trim();
+    if(!val){ return; }
+    if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+    var exists = state.wholesalers.filter(function(w){return w.name.toLowerCase()===val.toLowerCase();})[0];
+    if(!exists) await db.collection("wholesalers").add({name:val, createdAt: nowIso()});
+    $("#newWholesalerInput").value = "";
+    toast("Wholesaler added.", "success");
+  });
+  $all("[data-rename]", $("#drawerBody")).forEach(function(b){
+    b.addEventListener("click", async function(){
+      var w = state.wholesalers.filter(function(x){return x.id===b.dataset.rename;})[0];
+      if(!w) return;
+      var name = await appPrompt("Rename wholesaler:", w.name);
+      if(!name || !name.trim() || name.trim()===w.name) return;
+      await db.doc("wholesalers/"+w.id).update({name:name.trim()});
+      toast("Wholesaler renamed.", "success");
+    });
+  });
+  $all("[data-del]", $("#drawerBody")).forEach(function(b){
+    b.addEventListener("click", async function(){
+      var w = state.wholesalers.filter(function(x){return x.id===b.dataset.del;})[0];
+      if(!w) return;
+      if(!(await appConfirm('Remove "'+w.name+'" from your saved wholesalers?', {title:"Remove wholesaler?", confirmLabel:"Remove", danger:true}))) return;
+      await db.doc("wholesalers/"+w.id).delete();
+      toast("Wholesaler removed.", "success");
+    });
+  });
+}
+
+async function deleteAllData(){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+  var total = state.inventory.length + state.purchases.length + state.sales.length + state.stockLog.length;
+  if(total===0){ toast("There's nothing to delete yet.", "success"); return; }
+  var ok = await appConfirm(
+    "This permanently deletes all "+fmtNum(state.inventory.length)+" item(s), "+fmtNum(state.purchases.length)+
+    " purchase(s), "+fmtNum(state.sales.length)+" sale(s) and "+fmtNum(state.stockLog.length)+
+    " stock record(s). Your categories and wholesalers stay as they are. This can't be undone.",
+    { title:"Delete all data?", confirmLabel:"Yes, delete everything", danger:true }
+  );
+  if(!ok){ toast("Deletion cancelled.", "success"); return; }
+  try{
+    var jobs = [];
+    state.inventory.forEach(function(i){ jobs.push(db.doc("inventory/"+i.id).delete()); });
+    state.purchases.forEach(function(p){ jobs.push(db.doc("purchases/"+p.id).delete()); });
+    state.sales.forEach(function(s){ jobs.push(db.doc("sales/"+s.id).delete()); });
+    state.stockLog.forEach(function(l){ jobs.push(db.doc("stockLog/"+l.id).delete()); });
+    await Promise.all(jobs);
+    toast("All items, purchases, sales and stock records deleted.", "success");
+  }catch(e){
+    toast("Couldn't delete everything: "+(e&&e.message?e.message:"unknown error"), "error");
+  }
+}
+
+/* ---------------- modal ---------------- */
+function openModal(html){
+  $("#modalBox").innerHTML = html;
+  $("#modalOverlay").classList.add("show");
+}
+function closeModal(){
+  $("#modalOverlay").classList.remove("show");
+  $("#modalBox").innerHTML = "";
+}
+$("#modalOverlay").addEventListener("click", function(e){
+  if(e.target===$("#modalOverlay")) closeModal();
+});
+
+/* Native window.confirm()/prompt() are blocked or silently no-op inside
+   some sandboxed views, which made destructive actions and quick-add
+   dialogs look like they "did nothing". These in-page equivalents work
+   everywhere. */
+function openMini(html){
+  $("#miniBox").innerHTML = html;
+  $("#miniOverlay").classList.add("show");
+}
+function closeMini(){
+  $("#miniOverlay").classList.remove("show");
+  $("#miniBox").innerHTML = "";
+}
+function appAlert(message, title){
+  return new Promise(function(resolve){
+    var settled = false;
+    openMini(
+      '<h3>'+escapeHtml(title||"Please check")+'</h3>'+
+      '<p style="font-size:13.5px;color:var(--ink);line-height:1.5;margin:0;">'+escapeHtml(message)+'</p>'+
+      '<div class="modal-actions">'+
+        '<button class="btn" id="aa_ok">OK</button>'+
+      '</div>'
+    );
+    function finish(){ if(settled) return; settled=true; closeMini(); resolve(); }
+    $("#aa_ok").addEventListener("click", finish);
+    $("#miniOverlay").addEventListener("click", function overlayOnce(e){
+      if(e.target===$("#miniOverlay")){ finish(); this.removeEventListener("click", overlayOnce); }
+    });
+  });
+}
+function appConfirm(message, opts){
+  opts = opts || {};
+  return new Promise(function(resolve){
+    var settled = false;
+    openMini(
+      '<h3>'+escapeHtml(opts.title||"Please confirm")+'</h3>'+
+      '<p style="font-size:13.5px;color:var(--ink);line-height:1.5;margin:0;">'+escapeHtml(message)+'</p>'+
+      '<div class="modal-actions">'+
+        '<button class="btn ghost" id="ac_cancel">Cancel</button>'+
+        '<button class="btn'+(opts.danger?' danger':'')+'" id="ac_ok">'+escapeHtml(opts.confirmLabel||"Confirm")+'</button>'+
+      '</div>'
+    );
+    function finish(v){ if(settled) return; settled=true; closeMini(); resolve(v); }
+    $("#ac_cancel").addEventListener("click", function(){ finish(false); });
+    $("#ac_ok").addEventListener("click", function(){ finish(true); });
+    $("#miniOverlay").addEventListener("click", function overlayOnce(e){
+      if(e.target===$("#miniOverlay")){ finish(false); this.removeEventListener("click", overlayOnce); }
+    });
+  });
+}
+function appPrompt(message, defaultValue, opts){
+  opts = opts || {};
+  return new Promise(function(resolve){
+    var settled = false;
+    openMini(
+      '<h3>'+escapeHtml(opts.title||message)+'</h3>'+
+      (opts.detail ? '<p class="hint" style="white-space:pre-line;margin:0 0 12px 0;">'+escapeHtml(opts.detail)+'</p>' : '')+
+      '<div class="field full" style="margin-bottom:4px;">'+
+        (opts.title ? '<label>'+escapeHtml(message)+'</label>' : '')+
+        '<input id="ap_input" value="'+escapeHtml(defaultValue||"")+'" placeholder="'+escapeHtml(opts.placeholder||"")+'">'+
+      '</div>'+
+      '<div class="modal-actions">'+
+        '<button class="btn ghost" id="ap_cancel">Cancel</button>'+
+        '<button class="btn'+(opts.danger?' danger':'')+'" id="ap_ok">'+escapeHtml(opts.okLabel||"Save")+'</button>'+
+      '</div>'
+    );
+    var inp = $("#ap_input");
+    setTimeout(function(){ inp.focus(); inp.select(); }, 30);
+    function finish(v){ if(settled) return; settled=true; closeMini(); resolve(v); }
+    $("#ap_cancel").addEventListener("click", function(){ finish(null); });
+    $("#ap_ok").addEventListener("click", function(){ finish(inp.value); });
+    inp.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); finish(inp.value); } });
+  });
+}
+
+function itemOptions(selectedId){
+  return state.inventory.map(function(i){
+    return '<option value="'+i.id+'"'+(i.id===selectedId?' selected':'')+'>'+escapeHtml(i.name)+' — stock '+fmtNum(i.stock)+'</option>';
+  }).join("");
+}
+function categoryOptions(selected){
+  var list = state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES;
+  if(selected && list.indexOf(selected)<0) list = list.concat([selected]);
+  return list.map(function(c){return '<option'+(c===selected?' selected':'')+'>'+escapeHtml(c)+'</option>';}).join("");
+}
+async function addCategoryQuick(name){
+  name = (name||"").trim();
+  if(!name) return null;
+  var exists = state.categories.filter(function(c){return c.name.toLowerCase()===name.toLowerCase();})[0];
+  if(exists) return exists.name;
+  await db.collection("categories").add({name:name, createdAt: nowIso()});
+  return name;
+}
+function renderWholesalerDatalist(){
+  var el = document.getElementById("wholesalerList");
+  if(!el) return;
+  el.innerHTML = state.wholesalers.map(function(w){ return '<option value="'+escapeHtml(w.name)+'">'; }).join("");
+}
+
+/* ---- add / edit item modal ---- */
+function openItemModal(existing){
+  var it = existing || {};
+  var pendingPhotoData = it.photoData || null;
+  openModal(
+    '<h3>'+(existing?'Edit item':'Add item')+'</h3>'+
+    '<div class="form-grid">'+
+      '<div class="field full"><label>Photo</label>'+
+        '<div class="photo-upload">'+
+          (it.photoData ? '<img class="photo-preview" id="photoPreview" src="'+it.photoData+'">' : '<div class="photo-preview-placeholder" id="photoPreview">🥻</div>')+
+          '<div class="photo-actions">'+
+            '<input type="file" id="f_photo" accept="image/png,image/jpeg,image/webp,image/gif">'+
+            '<button type="button" class="btn ghost small" id="f_photo_remove" style="'+(it.photoData?'':'display:none;')+'width:fit-content;">Remove photo</button>'+
+            '<span class="hint" id="photoStatus"></span>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="field"><label>Name</label><input id="f_name" value="'+escapeHtml(it.name||"")+'" placeholder="e.g. Red Banarasi Silk"></div>'+
+      '<div class="field"><label>Category</label><select id="f_category">'+categoryOptions(it.category)+'<option value="__new__">+ Add new category…</option></select></div>'+
+      '<div class="field"><label>Color</label><input id="f_color" value="'+escapeHtml(it.color||"")+'" placeholder="e.g. Maroon"></div>'+
+      '<div class="field"><label>Wholesaler / source</label><input id="f_wholesaler" list="wholesalerList" value="'+escapeHtml(it.wholesaler||"")+'" placeholder="Supplier name"></div>'+
+      '<div class="field"><label>Cost price (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+(it.costPrice!==undefined?it.costPrice:"")+'"></div>'+
+      '<div class="field"><label>Selling price (₹)</label><input id="f_price" type="number" min="0" step="1" value="'+(it.sellingPrice!==undefined?it.sellingPrice:"")+'"></div>'+
+      '<div class="field"><label>'+(existing?'Current stock':'Opening stock')+'</label><input id="f_stock" type="number" min="0" step="1" value="'+(it.stock!==undefined?it.stock:0)+'"></div>'+
+      '<div class="field"><label>Reorder level</label><input id="f_reorder" type="number" min="0" step="1" value="'+(it.reorderLevel!==undefined?it.reorderLevel:2)+'"></div>'+
+      '<div class="field"><label>SKU</label><input id="f_sku" value="'+escapeHtml(it.sku||genSku(it.name))+'"></div>'+
+      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(it.notes||"")+'</textarea></div>'+
+    '</div>'+
+    '<div class="modal-actions">'+
+      (existing?'<button class="btn danger" id="f_delete" style="margin-right:auto;">Delete item</button>':'')+
+      '<button class="btn ghost" id="f_cancel">Cancel</button>'+
+      '<button class="btn" id="f_save">'+(existing?'Save changes':'Add item')+'</button>'+
+    '</div>'
+  );
+  $("#f_cancel").addEventListener("click", closeModal);
+  $("#f_category").addEventListener("change", async function(){
+    if(this.value!=="__new__") return;
+    var name = await appPrompt("New category name:");
+    if(!name || !name.trim()){ this.value = it.category || DEFAULT_CATEGORIES[0]; return; }
+    var added = await addCategoryQuick(name);
+    var newOpt = document.createElement("option");
+    newOpt.textContent = added;
+    this.insertBefore(newOpt, this.lastElementChild);
+    this.value = added;
+  });
+  $("#f_photo").addEventListener("change", async function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var statusEl = $("#photoStatus");
+    statusEl.textContent = "Processing…";
+    try{
+      var dataUrl = await compressImageToDataUrl(file);
+      pendingPhotoData = dataUrl;
+      var oldPreview = document.getElementById("photoPreview");
+      var img = document.createElement("img");
+      img.className = "photo-preview"; img.id = "photoPreview"; img.src = dataUrl;
+      oldPreview.replaceWith(img);
+      $("#f_photo_remove").style.display = "";
+      statusEl.textContent = "Photo added.";
+    }catch(err){
+      statusEl.textContent = "";
+      toast("Couldn't use that photo: "+(err&&err.message?err.message:"try a different image"), "error");
+    }
+  });
+  $("#f_photo_remove").addEventListener("click", function(){
+    pendingPhotoData = null;
+    var oldPreview = document.getElementById("photoPreview");
+    var div = document.createElement("div");
+    div.className = "photo-preview-placeholder"; div.id = "photoPreview"; div.textContent = "🥻";
+    oldPreview.replaceWith(div);
+    this.style.display = "none";
+    $("#photoStatus").textContent = "Photo removed.";
+  });
+  if(existing){
+    $("#f_delete").addEventListener("click", async function(){
+      if(await appConfirm("Delete \""+it.name+"\"? This can't be undone.", {title:"Delete item?", confirmLabel:"Delete", danger:true})){
+        await deleteItem(it.id); closeModal();
+      }
+    });
+  }
+  $("#f_save").addEventListener("click", async function(){
+    var name = $("#f_name").value.trim();
+    if(!name){ toast("Item name is required.", "error"); return; }
+    var data = {
+      name:name, category:$("#f_category").value, color:$("#f_color").value.trim(),
+      wholesaler:$("#f_wholesaler").value.trim(), costPrice:Number($("#f_cost").value)||0,
+      sellingPrice:Number($("#f_price").value)||0, stock:Number($("#f_stock").value)||0,
+      reorderLevel:Number($("#f_reorder").value)||0, sku:$("#f_sku").value.trim()||genSku(name),
+      notes:$("#f_notes").value.trim(), photoData: pendingPhotoData
+    };
+    if(existing){ await updateItem(existing.id, data); } else { await addItem(data); }
+    closeModal();
+  });
+}
+
+/* ---- purchase modal ---- */
+function openPurchaseModal(){
+  var hasItems = state.inventory.length>0;
+  var mode = hasItems ? "existing" : "new";
+  openModal(
+    '<h3>Record purchase</h3>'+
+    '<div class="report-tabs" id="purModeToggle" style="margin-bottom:4px;">'+
+      '<button type="button" data-mode="existing"'+(!hasItems?' disabled style="opacity:0.4;cursor:not-allowed;"':'')+' class="'+(mode==="existing"?"active":"")+'">Existing item</button>'+
+      '<button type="button" data-mode="new" class="'+(mode==="new"?"active":"")+'">New item</button>'+
+    '</div>'+
+    '<div class="form-grid">'+
+      '<div class="field full" id="grpExisting" style="'+(mode==="existing"?"":"display:none;")+'">'+
+        '<label>Item</label><select id="f_item">'+itemOptions()+'</select>'+
+      '</div>'+
+      '<div class="field" id="grpNewName" style="'+(mode==="new"?"":"display:none;")+'">'+
+        '<label>Saree name</label><input id="f_newname" placeholder="e.g. Red Banarasi Silk">'+
+      '</div>'+
+      '<div class="field" id="grpNewCategory" style="'+(mode==="new"?"":"display:none;")+'">'+
+        '<label>Category</label><select id="f_newcategory">'+categoryOptions()+'<option value="__new__">+ Add new category…</option></select>'+
+      '</div>'+
+      '<div class="field" id="grpNewColor" style="'+(mode==="new"?"":"display:none;")+'">'+
+        '<label>Color</label><input id="f_newcolor" placeholder="e.g. Maroon">'+
+      '</div>'+
+      '<div class="field" id="grpNewPrice" style="'+(mode==="new"?"":"display:none;")+'">'+
+        '<label>Selling price (₹)</label><input id="f_newprice" type="number" min="0" step="1">'+
+      '</div>'+
+      '<div class="field" id="grpNewReorder" style="'+(mode==="new"?"":"display:none;")+'">'+
+        '<label>Reorder level</label><input id="f_newreorder" type="number" min="0" step="1" value="2">'+
+      '</div>'+
+      '<div class="field"><label>Wholesaler</label><input id="f_wholesaler" list="wholesalerList" placeholder="Supplier name"></div>'+
+      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+todayStr()+'"></div>'+
+      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="1"></div>'+
+      '<div class="field"><label>Unit cost (₹)</label><input id="f_cost" type="number" min="0" step="1"></div>'+
+      '<div class="field full" id="grpUpdateCost" style="'+(mode==="new"?"display:none;":"")+'"><label><input type="checkbox" id="f_updatecost" checked style="width:auto;display:inline-block;margin-right:6px;">Update this item\'s cost price to match</label></div>'+
+      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>'+
+    '</div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn ghost" id="f_cancel">Cancel</button>'+
+      '<button class="btn" id="f_save">Record purchase</button>'+
+    '</div>'
+  );
+  var wField = $("#f_wholesaler");
+
+  function setMode(m){
+    mode = m;
+    $all("#purModeToggle button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode===m); });
+    $("#grpExisting").style.display = m==="existing" ? "" : "none";
+    ["grpNewName","grpNewCategory","grpNewColor","grpNewPrice","grpNewReorder"].forEach(function(id){
+      $("#"+id).style.display = m==="new" ? "" : "none";
+    });
+    $("#grpUpdateCost").style.display = m==="new" ? "none" : "";
+  }
+  $all("#purModeToggle button").forEach(function(b){
+    b.addEventListener("click", function(){
+      if(b.dataset.mode==="existing" && !hasItems) return;
+      setMode(b.dataset.mode);
+    });
+  });
+
+  $("#f_item").addEventListener("change", function(){
+    var it = findItem(this.value);
+    if(it && it.wholesaler && !wField.value) wField.value = it.wholesaler;
+    if(it) $("#f_cost").value = it.costPrice||"";
+  });
+  var firstItem = findItem($("#f_item").value);
+  if(hasItems && firstItem){ wField.value = firstItem.wholesaler||""; $("#f_cost").value = firstItem.costPrice||""; }
+
+  $("#f_newcategory").addEventListener("change", async function(){
+    if(this.value!=="__new__") return;
+    var name = await appPrompt("New category name:");
+    if(!name || !name.trim()){ this.value = DEFAULT_CATEGORIES[0]; return; }
+    var added = await addCategoryQuick(name);
+    var newOpt = document.createElement("option");
+    newOpt.textContent = added;
+    this.insertBefore(newOpt, this.lastElementChild);
+    this.value = added;
+  });
+
+  $("#f_cancel").addEventListener("click", closeModal);
+  $("#f_save").addEventListener("click", async function(){
+    var qty = Number($("#f_qty").value);
+    var unitCost = Number($("#f_cost").value);
+    if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
+    if(unitCost<0 || $("#f_cost").value===""){ toast("Enter a unit cost.", "error"); return; }
+    if(!(await validateTxnDate($("#f_date").value))) return;
+    var wholesaler = wField.value.trim(), date = $("#f_date").value||todayStr(), notes = $("#f_notes").value.trim();
+
+    if(mode==="new"){
+      var name = $("#f_newname").value.trim();
+      if(!name){ toast("Enter the saree's name.", "error"); return; }
+      await recordPurchaseWithNewItem({
+        name:name, sku:genSku(name), category:$("#f_newcategory").value, color:$("#f_newcolor").value.trim(),
+        sellingPrice:Number($("#f_newprice").value)||0, reorderLevel:Number($("#f_newreorder").value)||0
+      }, {qty:qty, unitCost:unitCost, date:date, wholesaler:wholesaler, notes:notes});
+      toast("New item added and purchase recorded.", "success");
+    } else {
+      if(!$("#f_item").value){ toast("Choose an item.", "error"); return; }
+      await recordPurchase({
+        itemId:$("#f_item").value, wholesaler:wholesaler, date:date,
+        qty:qty, unitCost:unitCost, updateCost:$("#f_updatecost").checked, notes:notes
+      });
+    }
+    closeModal();
+  });
+}
+
+/* ---- sale modal ---- */
+function openSaleModal(){
+  if(state.inventory.length===0){ toast("Add an inventory item first.", "error"); return; }
+  openModal(
+    '<h3>Record sale</h3>'+
+    '<div class="form-grid">'+
+      '<div class="field full"><label>Item</label><select id="f_item">'+itemOptions()+'</select></div>'+
+      '<div class="field"><label>Channel</label><select id="f_channel">'+CHANNELS.map(function(c){return '<option>'+c+'</option>';}).join("")+'</select></div>'+
+      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+todayStr()+'"></div>'+
+      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="1"></div>'+
+      '<div class="field"><label>Unit price (₹)</label><input id="f_price" type="number" min="0" step="1"></div>'+
+      '<div class="field"><label>Discount (₹, optional)</label><input id="f_discount" type="number" min="0" step="1" value="0"></div>'+
+      '<div class="field"><label>Customer (optional)</label><input id="f_customer" placeholder="Name"></div>'+
+      '<div class="field full"><span class="hint" id="f_stockhint"></span></div>'+
+      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>'+
+    '</div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn ghost" id="f_cancel">Cancel</button>'+
+      '<button class="btn" id="f_save">Record sale</button>'+
+    '</div>'
+  );
+  function syncItem(){
+    var it = findItem($("#f_item").value);
+    if(it){
+      $("#f_price").value = it.sellingPrice||"";
+      $("#f_stockhint").textContent = "Current stock: "+fmtNum(it.stock)+" · Cost price: "+fmtMoney(it.costPrice);
+    }
+  }
+  $("#f_item").addEventListener("change", syncItem);
+  syncItem();
+  $("#f_cancel").addEventListener("click", closeModal);
+  $("#f_save").addEventListener("click", async function(){
+    var itemId = $("#f_item").value;
+    var it = findItem(itemId);
+    var qty = Number($("#f_qty").value);
+    var price = Number($("#f_price").value);
+    if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
+    if(price<0 || $("#f_price").value===""){ toast("Enter a unit price.", "error"); return; }
+    if(!(await validateTxnDate($("#f_date").value))) return;
+    if(it && qty > it.stock){
+      if(!(await appConfirm("Only "+it.stock+" in stock but you're selling "+qty+". Stock will be set to 0. Continue?", {title:"Not enough stock", confirmLabel:"Continue anyway"}))) return;
+    }
+    await recordSale({
+      itemId:itemId, channel:$("#f_channel").value, date:$("#f_date").value||todayStr(),
+      qty:qty, unitPrice:price, discount:Number($("#f_discount").value)||0,
+      customer:$("#f_customer").value.trim(), notes:$("#f_notes").value.trim()
+    });
+    closeModal();
+  });
+}
+
+/* ---- manual adjustment modal ---- */
+function openAdjustmentModal(){
+  if(state.inventory.length===0){ toast("Add an inventory item first.", "error"); return; }
+  openModal(
+    '<h3>Manual stock adjustment</h3>'+
+    '<div class="form-grid">'+
+      '<div class="field full"><label>Item</label><select id="f_item">'+itemOptions()+'</select></div>'+
+      '<div class="field"><label>Direction</label><select id="f_type"><option value="in">Stock in (add)</option><option value="out">Stock out (remove)</option></select></div>'+
+      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="1"></div>'+
+      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+todayStr()+'"></div>'+
+      '<div class="field"><label>Reason</label><input id="f_reason" placeholder="e.g. Damaged, Customer return, Recount"></div>'+
+      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>'+
+    '</div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn ghost" id="f_cancel">Cancel</button>'+
+      '<button class="btn" id="f_save">Save adjustment</button>'+
+    '</div>'
+  );
+  $("#f_cancel").addEventListener("click", closeModal);
+  $("#f_save").addEventListener("click", async function(){
+    var qty = Number($("#f_qty").value);
+    if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
+    if(!(await validateTxnDate($("#f_date").value))) return;
+    await recordAdjustment({
+      itemId:$("#f_item").value, type:$("#f_type").value, qty:qty,
+      date:$("#f_date").value||todayStr(), reason:$("#f_reason").value.trim()||"Adjustment",
+      notes:$("#f_notes").value.trim()
+    });
+    closeModal();
+  });
+}
+
+$("#btnAddItem").addEventListener("click", function(){ openItemModal(null); });
+$("#btnAddPurchase").addEventListener("click", openPurchaseModal);
+$("#btnAddSale").addEventListener("click", openSaleModal);
+$("#btnAddAdjustment").addEventListener("click", openAdjustmentModal);
+
+/* ---------------- render: dashboard ---------------- */
+function renderDashboard(){
+  var inv = state.inventory;
+  var totalItems = inv.length;
+  var totalStock = inv.reduce(function(s,i){ return s+(i.stock||0); }, 0);
+  var stockValue = inv.reduce(function(s,i){ return s+(i.stock||0)*(i.costPrice||0); }, 0);
+  var potentialRevenue = inv.reduce(function(s,i){ return s+(i.stock||0)*(i.sellingPrice||0); }, 0);
+  var lowStock = inv.filter(function(i){ return (i.stock||0) <= (i.reorderLevel||0); });
+  var mStart = monthStartStr();
+  var monthSales = state.sales.filter(function(s){ return s.date >= mStart; });
+  var monthRevenue = monthSales.reduce(function(s,x){ return s+(x.totalPrice||0); }, 0);
+  var monthProfit = monthSales.reduce(function(s,x){ return s+((x.totalPrice||0)-(x.qty*(x.costPriceAtSale||0))); }, 0);
+
+  $("#dashCards").innerHTML = [
+    card("Items in inventory", fmtNum(totalItems)),
+    card("Total units in stock", fmtNum(totalStock)),
+    card("Stock value (cost)", fmtMoney(stockValue)),
+    card("Potential revenue", fmtMoney(potentialRevenue)),
+    card("This month's sales", fmtMoney(monthRevenue)),
+    card("This month's profit", fmtMoney(monthProfit)),
+  ].join("") + (lowStock.length ? card("Low stock items", fmtNum(lowStock.length), true) : "");
+
+  function card(label, value, warn){
+    return '<div class="card'+(warn?' warn':'')+'"><div class="label">'+label+'</div><div class="value">'+value+'</div></div>';
+  }
+
+  if(lowStock.length===0){
+    $("#dashLowStock").innerHTML = '<div class="empty">Nothing below reorder level. You\'re fully stocked.</div>';
+  } else {
+    $("#dashLowStock").innerHTML = simpleTable(
+      ["Item","Category","Stock","Reorder level"],
+      lowStock.sort(function(a,b){return a.stock-b.stock;}).map(function(i){
+        return [escapeHtml(i.name), escapeHtml(i.category||""), '<span class="stock-badge">'+fmtNum(i.stock)+'</span>', fmtNum(i.reorderLevel)];
+      })
+    );
+  }
+
+  var recent = state.stockLog.slice(0,8);
+  if(recent.length===0){
+    $("#dashRecent").innerHTML = '<div class="empty">No stock movements yet.</div>';
+  } else {
+    $("#dashRecent").innerHTML = simpleTable(
+      ["Date","Item","Movement","Qty","Reason"],
+      recent.map(function(l){
+        return [escapeHtml(l.date), escapeHtml(l.itemName),
+          '<span class="tag '+(l.type==='in'?'ok':'low')+'">'+(l.type==='in'?'Stock in':'Stock out')+'</span>',
+          fmtNum(l.qty), escapeHtml(l.reason||"")+(l.detail?(" · "+escapeHtml(l.detail)):"")];
+      })
+    );
+  }
+}
+function simpleTable(headers, rows){
+  if(rows.length===0) return '<div class="empty">Nothing to show.</div>';
+  return '<table><thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join("")+
+    '</tr></thead><tbody>'+rows.map(function(r){
+      return '<tr>'+r.map(function(c){return '<td>'+c+'</td>';}).join("")+'</tr>';
+    }).join("")+'</tbody></table>';
+}
+
+/* ---------------- render: inventory ---------------- */
+function renderInventory(){
+  var q = ($("#invSearch").value||"").toLowerCase().trim();
+  var sort = $("#invSort").value;
+  var rows = state.inventory.filter(function(i){
+    if(!q) return true;
+    return (i.name||"").toLowerCase().indexOf(q)>=0 || (i.category||"").toLowerCase().indexOf(q)>=0 ||
+      (i.wholesaler||"").toLowerCase().indexOf(q)>=0 || (i.color||"").toLowerCase().indexOf(q)>=0;
+  });
+  rows = rows.slice();
+  if(sort==="stock-asc") rows.sort(function(a,b){return (a.stock||0)-(b.stock||0);});
+  else if(sort==="stock-desc") rows.sort(function(a,b){return (b.stock||0)-(a.stock||0);});
+  else if(sort==="value-desc") rows.sort(function(a,b){return (b.stock*b.costPrice)-(a.stock*a.costPrice);});
+  else rows.sort(function(a,b){return (a.name||"").localeCompare(b.name||"");});
+
+  if(rows.length===0){
+    $("#invTable").innerHTML = '<div class="empty">No items yet. Add your first saree with "+ Add item".</div>';
+    return;
+  }
+  var body = rows.map(function(i){
+    var low = (i.stock||0) <= (i.reorderLevel||0);
+    return '<tr>'+
+      '<td class="photo-col">'+(i.photoData ? '<img class="thumb" src="'+i.photoData+'">' : '<div class="thumb-placeholder">🥻</div>')+'</td>'+
+      '<td>'+escapeHtml(i.name)+'<div class="muted" style="font-size:11.5px;">'+escapeHtml(i.sku||"")+'</div></td>'+
+      '<td>'+escapeHtml(i.category||"")+'</td>'+
+      '<td>'+escapeHtml(i.color||"")+'</td>'+
+      '<td>'+escapeHtml(i.wholesaler||"")+'</td>'+
+      '<td class="num">'+fmtMoney(i.costPrice)+'</td>'+
+      '<td class="num">'+fmtMoney(i.sellingPrice)+'</td>'+
+      '<td class="num"><span class="tag '+(low?'low':'ok')+'">'+fmtNum(i.stock)+'</span></td>'+
+      '<td class="num">'+fmtMoney((i.stock||0)*(i.costPrice||0))+'</td>'+
+      '<td><div class="row-actions">'+
+        '<button class="btn small secondary" data-edit="'+i.id+'">Edit</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join("");
+  $("#invTable").innerHTML = '<table><thead><tr>'+
+    '<th></th><th>Item</th><th>Category</th><th>Color</th><th>Wholesaler</th><th class="num">Cost</th>'+
+    '<th class="num">Price</th><th class="num">Stock</th><th class="num">Stock value</th><th></th>'+
+    '</tr></thead><tbody>'+body+'</tbody></table>';
+  $all("[data-edit]", $("#invTable")).forEach(function(btn){
+    btn.addEventListener("click", function(){ openItemModal(findItem(btn.dataset.edit)); });
+  });
+}
+$("#invSearch").addEventListener("input", renderInventory);
+$("#invSort").addEventListener("change", renderInventory);
+
+/* ---------------- render: purchases ---------------- */
+function renderPurchases(){
+  var wf = ($("#purWholesalerFilter").value||"").toLowerCase().trim();
+  var from = $("#purFrom").value, to = $("#purTo").value;
+  var rows = state.purchases.filter(function(p){
+    if(wf && (p.wholesaler||"").toLowerCase().indexOf(wf)<0) return false;
+    if(from && p.date < from) return false;
+    if(to && p.date > to) return false;
+    return true;
+  });
+  if(rows.length===0){
+    $("#purTable").innerHTML = '<div class="empty">No purchases recorded yet.</div>';
+    return;
+  }
+  var body = rows.map(function(p){
+    return '<tr><td>'+escapeHtml(p.date)+'</td><td>'+escapeHtml(p.itemName)+'</td><td>'+escapeHtml(p.wholesaler||"")+'</td>'+
+      '<td class="num">'+fmtNum(p.qty)+'</td><td class="num">'+fmtMoney(p.unitCost)+'</td>'+
+      '<td class="num">'+fmtMoney(p.totalCost)+'</td>'+
+      '<td><button class="btn small ghost" data-del="'+p.id+'">Delete</button></td></tr>';
+  }).join("");
+  $("#purTable").innerHTML = '<table><thead><tr><th>Date</th><th>Item</th><th>Wholesaler</th>'+
+    '<th class="num">Qty</th><th class="num">Unit cost</th><th class="num">Total</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
+  $all("[data-del]", $("#purTable")).forEach(function(btn){
+    btn.addEventListener("click", async function(){
+      var p = state.purchases.find(function(x){return x.id===btn.dataset.del;});
+      if(p && await appConfirm("Delete this purchase of "+p.qty+" × "+p.itemName+"? Stock will be reduced back.", {title:"Delete purchase?", confirmLabel:"Delete", danger:true})) await deletePurchase(p);
+    });
+  });
+}
+$("#purWholesalerFilter").addEventListener("input", renderPurchases);
+wireDateRange("purFrom", "purTo", renderPurchases);
+
+/* ---------------- render: sales ---------------- */
+function renderSales(){
+  var ch = $("#saleChannelFilter").value;
+  var from = $("#saleFrom").value, to = $("#saleTo").value;
+  var rows = state.sales.filter(function(s){
+    if(ch && s.channel!==ch) return false;
+    if(from && s.date < from) return false;
+    if(to && s.date > to) return false;
+    return true;
+  });
+  if(rows.length===0){
+    $("#saleTable").innerHTML = '<div class="empty">No sales recorded yet.</div>';
+    return;
+  }
+  var body = rows.map(function(s){
+    var profit = (s.totalPrice||0) - (s.qty*(s.costPriceAtSale||0));
+    var chClass = s.channel==="Online"?"online":(s.channel==="Exhibition"?"exhibition":"in-house");
+    return '<tr><td>'+escapeHtml(s.date)+'</td><td>'+escapeHtml(s.itemName)+'</td>'+
+      '<td><span class="tag '+chClass+'">'+escapeHtml(s.channel)+'</span></td>'+
+      '<td class="num">'+fmtNum(s.qty)+'</td><td class="num">'+fmtMoney(s.unitPrice)+'</td>'+
+      '<td class="num">'+fmtMoney(s.totalPrice)+'</td>'+
+      '<td class="num '+(profit>=0?'profit-pos':'profit-neg')+'">'+fmtMoney(profit)+'</td>'+
+      '<td><button class="btn small ghost" data-del="'+s.id+'">Delete</button></td></tr>';
+  }).join("");
+  $("#saleTable").innerHTML = '<table><thead><tr><th>Date</th><th>Item</th><th>Channel</th>'+
+    '<th class="num">Qty</th><th class="num">Unit price</th><th class="num">Total</th><th class="num">Profit</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
+  $all("[data-del]", $("#saleTable")).forEach(function(btn){
+    btn.addEventListener("click", async function(){
+      var s = state.sales.find(function(x){return x.id===btn.dataset.del;});
+      if(s && await appConfirm("Delete this sale of "+s.qty+" × "+s.itemName+"? Stock will be restored.", {title:"Delete sale?", confirmLabel:"Delete", danger:true})) await deleteSale(s);
+    });
+  });
+}
+$("#saleChannelFilter").addEventListener("change", renderSales);
+wireDateRange("saleFrom", "saleTo", renderSales);
+
+/* ---------------- render: ledger ---------------- */
+function renderLedger(){
+  var type = $("#ledgerTypeFilter").value;
+  var itemF = ($("#ledgerItemFilter").value||"").toLowerCase().trim();
+  var from = $("#ledgerFrom").value, to = $("#ledgerTo").value;
+  var rows = state.stockLog.filter(function(l){
+    if(type && l.type!==type) return false;
+    if(itemF && (l.itemName||"").toLowerCase().indexOf(itemF)<0) return false;
+    if(from && l.date < from) return false;
+    if(to && l.date > to) return false;
+    return true;
+  });
+  if(rows.length===0){
+    $("#ledgerTable").innerHTML = '<div class="empty">No stock movements match this filter.</div>';
+    return;
+  }
+  var body = rows.map(function(l){
+    return '<tr><td>'+escapeHtml(l.date)+'</td><td>'+escapeHtml(l.itemName)+'</td>'+
+      '<td><span class="tag '+(l.type==='in'?'ok':'low')+'">'+(l.type==='in'?'Stock in':'Stock out')+'</span></td>'+
+      '<td class="num">'+fmtNum(l.qty)+'</td><td>'+escapeHtml(l.reason||"")+'</td>'+
+      '<td class="muted">'+escapeHtml(l.detail||"")+'</td></tr>';
+  }).join("");
+  $("#ledgerTable").innerHTML = '<table><thead><tr><th>Date</th><th>Item</th><th>Movement</th>'+
+    '<th class="num">Qty</th><th>Reason</th><th>Detail</th></tr></thead><tbody>'+body+'</tbody></table>';
+}
+["ledgerTypeFilter","ledgerItemFilter"].forEach(function(id){
+  $("#"+id).addEventListener("input", renderLedger);
+  $("#"+id).addEventListener("change", renderLedger);
+});
+wireDateRange("ledgerFrom", "ledgerTo", renderLedger);
+
+/* ---------------- render: reports ---------------- */
+function rangeRowHtml(withRange){
+  if(!withRange) return "";
+  return '<label>From<input type="date" id="repFrom" value=""></label>'+
+    '<label>To<input type="date" id="repTo" value=""></label>'+
+    '<button class="btn secondary small" id="repThisMonth" type="button">This month</button>'+
+    '<button class="btn ghost small" id="repAllTime" type="button">All time</button>';
+}
+function renderReports(){
+  var needsRange = currentReport!=="stock" && currentReport!=="lowstock";
+  $("#reportRangeRow").innerHTML = rangeRowHtml(needsRange);
+  if(needsRange){
+    $("#repThisMonth").addEventListener("click", function(){
+      $("#repFrom").value = monthStartStr(); $("#repTo").value = todayStr(); renderReportBody();
+    });
+    $("#repAllTime").addEventListener("click", function(){
+      $("#repFrom").value = ""; $("#repTo").value = ""; renderReportBody();
+    });
+    wireDateRange("repFrom", "repTo", renderReportBody);
+  }
+  renderReportBody();
+}
+function getRange(){
+  var from = $("#repFrom") ? $("#repFrom").value : "";
+  var to = $("#repTo") ? $("#repTo").value : "";
+  return {from:from, to:to};
+}
+function inRange(dateStr, r){
+  if(r.from && dateStr < r.from) return false;
+  if(r.to && dateStr > r.to) return false;
+  return true;
+}
+function renderReportBody(){
+  var el = $("#reportBody");
+  if(currentReport==="stock") return renderStockReport(el);
+  if(currentReport==="lowstock") return renderLowStockReport(el);
+  if(currentReport==="sales") return renderSalesReport(el);
+  if(currentReport==="purchases") return renderPurchaseReport(el);
+  if(currentReport==="pnl") return renderPnlReport(el);
+  if(currentReport==="ledger") return renderLedgerReport(el);
+}
+
+function renderStockReport(el){
+  var inv = state.inventory.slice().sort(function(a,b){return (a.name||"").localeCompare(b.name||"");});
+  var totalValue = inv.reduce(function(s,i){return s+(i.stock||0)*(i.costPrice||0);},0);
+  var totalRevenue = inv.reduce(function(s,i){return s+(i.stock||0)*(i.sellingPrice||0);},0);
+  el.innerHTML =
+    '<div class="sub-cards">'+
+      '<div class="card"><div class="label">Items</div><div class="value">'+fmtNum(inv.length)+'</div></div>'+
+      '<div class="card"><div class="label">Stock value (cost)</div><div class="value">'+fmtMoney(totalValue)+'</div></div>'+
+      '<div class="card"><div class="label">Potential revenue</div><div class="value">'+fmtMoney(totalRevenue)+'</div></div>'+
+    '</div>'+
+    '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
+    '<div class="table-wrap">'+ (inv.length ? simpleTable(
+      ["Item","Category","Wholesaler","Stock","Cost","Value","Sell price","Potential revenue"],
+      inv.map(function(i){
+        return [escapeHtml(i.name), escapeHtml(i.category||""), escapeHtml(i.wholesaler||""),
+          fmtNum(i.stock), fmtMoney(i.costPrice), fmtMoney((i.stock||0)*(i.costPrice||0)),
+          fmtMoney(i.sellingPrice), fmtMoney((i.stock||0)*(i.sellingPrice||0))];
+      })
+    ) : '<div class="empty">No items yet.</div>') + '</div>';
+  $("#expBtn").addEventListener("click", function(){
+    exportCSV("stock-summary-"+todayStr()+".csv",
+      ["Item","Category","Wholesaler","Stock","Cost Price","Stock Value","Selling Price","Potential Revenue"],
+      inv.map(function(i){ return [i.name,i.category||"",i.wholesaler||"",i.stock||0,i.costPrice||0,(i.stock||0)*(i.costPrice||0),i.sellingPrice||0,(i.stock||0)*(i.sellingPrice||0)]; })
+    );
+  });
+}
+
+function renderLowStockReport(el){
+  var low = state.inventory.filter(function(i){return (i.stock||0)<=(i.reorderLevel||0);})
+    .sort(function(a,b){return (a.stock||0)-(b.stock||0);});
+  el.innerHTML =
+    '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
+    '<div class="table-wrap">'+(low.length ? simpleTable(
+      ["Item","Category","Wholesaler","Stock","Reorder level","Shortfall"],
+      low.map(function(i){
+        return [escapeHtml(i.name), escapeHtml(i.category||""), escapeHtml(i.wholesaler||""),
+          fmtNum(i.stock), fmtNum(i.reorderLevel), fmtNum(Math.max(0,(i.reorderLevel||0)-(i.stock||0)))];
+      })
+    ) : '<div class="empty">Nothing below reorder level.</div>')+'</div>';
+  $("#expBtn").addEventListener("click", function(){
+    exportCSV("low-stock-"+todayStr()+".csv",
+      ["Item","Category","Wholesaler","Stock","Reorder Level"],
+      low.map(function(i){return [i.name,i.category||"",i.wholesaler||"",i.stock||0,i.reorderLevel||0];})
+    );
+  });
+}
+
+function renderSalesReport(el){
+  var r = getRange();
+  var rows = state.sales.filter(function(s){return inRange(s.date, r);});
+  var byChannel = {};
+  CHANNELS.forEach(function(c){ byChannel[c] = {qty:0,revenue:0,profit:0}; });
+  var totalRevenue=0, totalProfit=0, totalQty=0;
+  rows.forEach(function(s){
+    var profit = (s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
+    totalRevenue += s.totalPrice||0; totalProfit += profit; totalQty += s.qty||0;
+    if(!byChannel[s.channel]) byChannel[s.channel] = {qty:0,revenue:0,profit:0};
+    byChannel[s.channel].qty += s.qty||0;
+    byChannel[s.channel].revenue += s.totalPrice||0;
+    byChannel[s.channel].profit += profit;
+  });
+  el.innerHTML =
+    '<div class="sub-cards">'+
+      '<div class="card"><div class="label">Units sold</div><div class="value">'+fmtNum(totalQty)+'</div></div>'+
+      '<div class="card"><div class="label">Revenue</div><div class="value">'+fmtMoney(totalRevenue)+'</div></div>'+
+      '<div class="card"><div class="label">Profit</div><div class="value">'+fmtMoney(totalProfit)+'</div></div>'+
+    '</div>'+
+    '<div class="section-block"><h3>By channel</h3>'+simpleTable(
+      ["Channel","Units","Revenue","Profit"],
+      Object.keys(byChannel).filter(function(c){return byChannel[c].qty>0;}).map(function(c){
+        return [c, fmtNum(byChannel[c].qty), fmtMoney(byChannel[c].revenue), fmtMoney(byChannel[c].profit)];
+      })
+    )+'</div>'+
+    '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
+    '<div class="table-wrap">'+(rows.length ? simpleTable(
+      ["Date","Item","Channel","Qty","Unit price","Total","Profit"],
+      rows.map(function(s){
+        var profit = (s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
+        return [escapeHtml(s.date), escapeHtml(s.itemName), escapeHtml(s.channel), fmtNum(s.qty), fmtMoney(s.unitPrice), fmtMoney(s.totalPrice), fmtMoney(profit)];
+      })
+    ) : '<div class="empty">No sales in this range.</div>')+'</div>';
+  $("#expBtn").addEventListener("click", function(){
+    exportCSV("sales-report-"+todayStr()+".csv",
+      ["Date","Item","Channel","Qty","Unit Price","Total","Cost At Sale","Profit"],
+      rows.map(function(s){
+        var profit=(s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
+        return [s.date,s.itemName,s.channel,s.qty,s.unitPrice,s.totalPrice,s.costPriceAtSale||0,profit];
+      })
+    );
+  });
+}
+
+function renderPurchaseReport(el){
+  var r = getRange();
+  var rows = state.purchases.filter(function(p){return inRange(p.date, r);});
+  var byW = {};
+  var totalCost=0, totalQty=0;
+  rows.forEach(function(p){
+    totalCost += p.totalCost||0; totalQty += p.qty||0;
+    var w = p.wholesaler || "Unspecified";
+    if(!byW[w]) byW[w]={qty:0,cost:0};
+    byW[w].qty += p.qty||0; byW[w].cost += p.totalCost||0;
+  });
+  el.innerHTML =
+    '<div class="sub-cards">'+
+      '<div class="card"><div class="label">Units purchased</div><div class="value">'+fmtNum(totalQty)+'</div></div>'+
+      '<div class="card"><div class="label">Total spent</div><div class="value">'+fmtMoney(totalCost)+'</div></div>'+
+    '</div>'+
+    '<div class="section-block"><h3>By wholesaler</h3>'+simpleTable(
+      ["Wholesaler","Units","Total cost"],
+      Object.keys(byW).map(function(w){return [escapeHtml(w), fmtNum(byW[w].qty), fmtMoney(byW[w].cost)];})
+    )+'</div>'+
+    '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
+    '<div class="table-wrap">'+(rows.length ? simpleTable(
+      ["Date","Item","Wholesaler","Qty","Unit cost","Total"],
+      rows.map(function(p){return [escapeHtml(p.date), escapeHtml(p.itemName), escapeHtml(p.wholesaler||""), fmtNum(p.qty), fmtMoney(p.unitCost), fmtMoney(p.totalCost)];})
+    ) : '<div class="empty">No purchases in this range.</div>')+'</div>';
+  $("#expBtn").addEventListener("click", function(){
+    exportCSV("purchase-report-"+todayStr()+".csv",
+      ["Date","Item","Wholesaler","Qty","Unit Cost","Total"],
+      rows.map(function(p){return [p.date,p.itemName,p.wholesaler||"",p.qty,p.unitCost,p.totalCost];})
+    );
+  });
+}
+
+function renderPnlReport(el){
+  var r = getRange();
+  var sales = state.sales.filter(function(s){return inRange(s.date, r);});
+  var purchases = state.purchases.filter(function(p){return inRange(p.date, r);});
+  var revenue = sales.reduce(function(s,x){return s+(x.totalPrice||0);},0);
+  var cogs = sales.reduce(function(s,x){return s+(x.qty*(x.costPriceAtSale||0));},0);
+  var grossProfit = revenue - cogs;
+  var margin = revenue>0 ? (grossProfit/revenue*100) : 0;
+  var purchaseSpend = purchases.reduce(function(s,p){return s+(p.totalCost||0);},0);
+  el.innerHTML =
+    '<div class="sub-cards">'+
+      '<div class="card"><div class="label">Revenue</div><div class="value">'+fmtMoney(revenue)+'</div></div>'+
+      '<div class="card"><div class="label">Cost of goods sold</div><div class="value">'+fmtMoney(cogs)+'</div></div>'+
+      '<div class="card"><div class="label">Gross profit</div><div class="value">'+fmtMoney(grossProfit)+'</div></div>'+
+      '<div class="card"><div class="label">Margin</div><div class="value">'+margin.toFixed(1)+'%</div></div>'+
+      '<div class="card"><div class="label">Spent on purchases</div><div class="value">'+fmtMoney(purchaseSpend)+'</div></div>'+
+    '</div>'+
+    '<p class="muted" style="font-size:12.5px;">Gross profit compares sale revenue to the cost of the goods sold. "Spent on purchases" is cash paid to wholesalers in this range — it may differ from COGS if stock bought now sells later.</p>';
+}
+
+function renderLedgerReport(el){
+  var r = getRange();
+  var rows = state.stockLog.filter(function(l){return inRange(l.date, r);});
+  var inQty = rows.filter(function(l){return l.type==="in";}).reduce(function(s,l){return s+(l.qty||0);},0);
+  var outQty = rows.filter(function(l){return l.type==="out";}).reduce(function(s,l){return s+(l.qty||0);},0);
+  el.innerHTML =
+    '<div class="sub-cards">'+
+      '<div class="card"><div class="label">Stock in</div><div class="value">'+fmtNum(inQty)+'</div></div>'+
+      '<div class="card"><div class="label">Stock out</div><div class="value">'+fmtNum(outQty)+'</div></div>'+
+      '<div class="card"><div class="label">Net change</div><div class="value">'+fmtNum(inQty-outQty)+'</div></div>'+
+    '</div>'+
+    '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
+    '<div class="table-wrap">'+(rows.length ? simpleTable(
+      ["Date","Item","Movement","Qty","Reason","Detail"],
+      rows.map(function(l){
+        return [escapeHtml(l.date), escapeHtml(l.itemName), (l.type==="in"?"Stock in":"Stock out"), fmtNum(l.qty), escapeHtml(l.reason||""), escapeHtml(l.detail||"")];
+      })
+    ) : '<div class="empty">No movements in this range.</div>')+'</div>';
+  $("#expBtn").addEventListener("click", function(){
+    exportCSV("stock-in-out-"+todayStr()+".csv",
+      ["Date","Item","Movement","Qty","Reason","Detail"],
+      rows.map(function(l){return [l.date,l.itemName,l.type,l.qty,l.reason||"",l.detail||""];})
+    );
+  });
+}
+
+/* ---------------- master render ---------------- */
+function renderAll(){
+  renderDashboard();
+  renderInventory();
+  renderPurchases();
+  renderSales();
+  renderLedger();
+  renderReports();
+}
+
+/* ---------------- boot ---------------- */
+window.addEventListener("DOMContentLoaded", function(){
+  renderAll();
+});
+})();
+</script>
+</body>
+</html>
