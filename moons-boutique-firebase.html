@@ -6,61 +6,31 @@
 <title>Moon's Boutique — Inventory &amp; Sales</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>
   :root{
-    --maroon:#1E1912;
-    --maroon-dark:#0D0B08;
-    --gold:#C79A3C;
-    --gold-light:#F1E3C0;
-    --wine:#7A1F3D;
-    --wine-bg:#F6E7EC;
-    --cream:#FBF6EC;
+    --maroon:#7A1F3D;
+    --maroon-dark:#5A1730;
+    --gold:#B8860B;
+    --gold-light:#FCF0DC;
+    --wine:#9B2242;
+    --wine-bg:#FCEAF0;
+    --cream:#F7F6F4;
     --panel:#FFFFFF;
-    --ink:#2B2320;
-    --ink-soft:#6B5F55;
-    --line:#E7DCC9;
-    --danger:#A5352B;
-    --danger-bg:#FBEAE7;
-    --success:#3D6B4A;
-    --success-bg:#E9F2EA;
-    --warn-bg:#FBF0DC;
+    --ink:#1A1A1A;
+    --ink-soft:#5B5A57;
+    --line:#DEDCD8;
+    --danger:#B3261E;
+    --danger-bg:#FDECEA;
+    --success:#1E7B45;
+    --success-bg:#E8F5EC;
+    --warn-bg:#FFF4E1;
     --radius:10px;
-    --font-display:'Fraunces', Georgia, serif;
+    --font-display:'Inter', system-ui, -apple-system, sans-serif;
     --font-body:'Inter', system-ui, -apple-system, sans-serif;
-  }
-  :root:not([data-theme="light"]) {
-    @media (prefers-color-scheme: dark) {
-      --gold-light:#3A2E1A;
-      --wine-bg:#3A1E26;
-      --cream:#1B1613;
-      --panel:#252019;
-      --ink:#F1E9DE;
-      --ink-soft:#B8AA9A;
-      --line:#3C332A;
-      --danger:#E5786C;
-      --danger-bg:#3A211E;
-      --success:#7FBE8F;
-      --success-bg:#1E2E22;
-      --warn-bg:#332A18;
-    }
-  }
-  :root[data-theme="dark"] {
-    --gold-light:#3A2E1A;
-    --wine-bg:#3A1E26;
-    --cream:#1B1613;
-    --panel:#252019;
-    --ink:#F1E9DE;
-    --ink-soft:#B8AA9A;
-    --line:#3C332A;
-    --danger:#E5786C;
-    --danger-bg:#3A211E;
-    --success:#7FBE8F;
-    --success-bg:#1E2E22;
-    --warn-bg:#332A18;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -85,8 +55,8 @@
     box-shadow:0 20px 60px rgba(0,0,0,0.3);
   }
   .login-logo{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px;}
-  .login-logo img{width:64px;height:64px;border-radius:50%;box-shadow:0 0 0 2px rgba(199,154,60,0.5);}
-  .login-logo .name{font-family:var(--font-display);font-style:italic;font-weight:600;font-size:22px;color:var(--maroon);}
+  .login-logo img{width:64px;height:64px;border-radius:50%;box-shadow:0 0 0 2px rgba(184,134,11,0.5);}
+  .login-logo .name{font-family:var(--font-display);font-weight:800;font-size:21px;color:var(--maroon);}
   .login-tabs{display:flex;gap:4px;background:var(--cream);border-radius:9px;padding:4px;margin-bottom:18px;}
   .login-tabs button{
     flex:1;background:none;border:none;padding:9px;border-radius:7px;font-size:13.5px;font-weight:600;
@@ -97,7 +67,7 @@
   .login-field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
   .login-field input{
     width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;
-    font-family:var(--font-body);background:var(--cream);color:var(--ink);
+    font-family:var(--font-body);background:var(--panel);color:var(--ink);
   }
   .login-error{color:var(--danger);font-size:12.5px;margin:2px 0 10px 0;min-height:1em;}
   .login-submit{
@@ -123,24 +93,21 @@
   }
   .brand{
     font-family:var(--font-display);
-    font-weight:600;
-    font-style:italic;
-    font-size:27px;
-    letter-spacing:0.2px;
+    font-weight:800;
+    font-size:24px;
+    letter-spacing:0.1px;
     display:flex; align-items:center; gap:10px;
-    color:var(--gold);
-    text-shadow:0 1px 12px rgba(199,154,60,0.35);
+    color:#FFFFFF;
   }
   .brand-logo{
     width:42px;height:42px;border-radius:50%;object-fit:cover;
-    box-shadow:0 0 0 2px rgba(199,154,60,0.55);
+    box-shadow:0 0 0 2px rgba(255,255,255,0.55);
   }
   .brand .sub{
     font-family:var(--font-body);
-    font-style:normal;
     font-weight:500;
     font-size:12.5px;
-    color:rgba(255,255,255,0.75);
+    color:rgba(255,255,255,0.8);
     align-self:flex-end;
     margin-bottom:3px;
   }
@@ -282,7 +249,6 @@
   }
   .tag.in-house{background:var(--success-bg);color:var(--success);}
   .tag.online{background:#DDE6F5;color:#31538F;}
-  :root[data-theme="dark"] .tag.online, :root:not([data-theme="light"]) .tag.online{ @media (prefers-color-scheme: dark){background:#22314F;color:#9AB4E8;} }
   .tag.exhibition{background:var(--wine-bg);color:var(--wine);}
   .tag.low{background:var(--danger-bg);color:var(--danger);}
   .tag.ok{background:var(--success-bg);color:var(--success);}
