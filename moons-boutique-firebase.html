@@ -337,6 +337,16 @@
   .field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--gold);outline-offset:1px;}
   .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
   .hint{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .combo-wrap{position:relative;}
+  .combo-list{
+    display:none;position:absolute;left:0;right:0;top:100%;margin-top:3px;
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    max-height:180px;overflow-y:auto;z-index:60;box-shadow:0 6px 16px rgba(0,0,0,0.14);
+  }
+  .combo-list.open{display:block;}
+  .combo-item{padding:9px 12px;font-size:13.5px;cursor:pointer;}
+  .combo-item:hover, .combo-item:active{background:var(--gold-light);}
+  .combo-empty{padding:9px 12px;font-size:12.5px;color:var(--ink-soft);}
   .modal-close{position:absolute;}
 
   .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:400;display:flex;flex-direction:column;gap:8px;}
@@ -1546,29 +1556,99 @@ function itemOptions(selectedId){
     return '<option value="'+i.id+'"'+(i.id===selectedId?' selected':'')+'>'+escapeHtml(i.name)+' — stock '+fmtNum(i.stock)+'</option>';
   }).join("");
 }
-function itemChoices(){
-  return state.inventory.map(function(i){ return {value:i.id, label:i.name+" — stock "+fmtNum(i.stock)}; });
+function itemChoices(categoryFilter){
+  var items = state.inventory;
+  if(categoryFilter) items = items.filter(function(i){ return i.category===categoryFilter; });
+  return items.map(function(i){ return {value:i.id, label:i.name+" — stock "+fmtNum(i.stock)}; });
+}
+function categoryFilterOptionsHtml(){
+  var list = state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES;
+  return '<option value="">All categories</option>'+list.map(function(c){return '<option>'+escapeHtml(c)+'</option>';}).join("");
 }
 /* Searchable dropdown for pickers that need a real id behind the scenes
-   (like choosing an inventory item) — a text input filtered via a native
-   datalist, backed by a hidden field holding the actual value. */
+   (like choosing an inventory item) — a text input with a custom tap-to-open
+   list (not a native <datalist>, which on Android Chrome often won't show
+   suggestions until you start typing), backed by a hidden field holding
+   the actual value. choices may be a fixed array, or a function returning
+   the current array (so the list can be refreshed live, e.g. by a category
+   filter) without re-wiring. */
 function searchableSelectHtml(fieldId, choices, selectedValue, placeholder){
+  var list = typeof choices === "function" ? choices() : choices;
   var selectedLabel = "";
-  choices.forEach(function(c){ if(c.value===selectedValue) selectedLabel = c.label; });
-  return '<input type="text" id="'+fieldId+'_q" list="'+fieldId+'_dl" autocomplete="off" placeholder="'+escapeHtml(placeholder||"Type to search…")+'" value="'+escapeHtml(selectedLabel)+'">'+
-    '<datalist id="'+fieldId+'_dl">'+choices.map(function(c){return '<option value="'+escapeHtml(c.label)+'">';}).join("")+'</datalist>'+
-    '<input type="hidden" id="'+fieldId+'" value="'+escapeHtml(selectedValue||"")+'">';
+  list.forEach(function(c){ if(c.value===selectedValue) selectedLabel = c.label; });
+  return '<div class="combo-wrap">'+
+    '<input type="text" id="'+fieldId+'_q" autocomplete="off" placeholder="'+escapeHtml(placeholder||"Tap to choose…")+'" value="'+escapeHtml(selectedLabel)+'">'+
+    '<div class="combo-list" id="'+fieldId+'_dl"></div>'+
+    '<input type="hidden" id="'+fieldId+'" value="'+escapeHtml(selectedValue||"")+'">'+
+  '</div>';
 }
+function refreshSearchableSelectOptions(){ /* no-op: list is rebuilt live each time it opens */ }
 function wireSearchableSelect(fieldId, choices, onChange){
   var q = document.getElementById(fieldId+"_q");
   var hidden = document.getElementById(fieldId);
+  var listEl = document.getElementById(fieldId+"_dl");
+  function getList(){ return typeof choices === "function" ? choices() : choices; }
+  function renderDropdown(filterText){
+    var all = getList();
+    var f = (filterText||"").toLowerCase();
+    var filtered = f ? all.filter(function(c){ return c.label.toLowerCase().indexOf(f)>=0; }) : all;
+    listEl.innerHTML = filtered.length
+      ? filtered.map(function(c){ return '<div class="combo-item" data-value="'+escapeHtml(c.value)+'" data-label="'+escapeHtml(c.label)+'">'+escapeHtml(c.label)+'</div>'; }).join("")
+      : '<div class="combo-empty">No matches</div>';
+    listEl.classList.add("open");
+  }
   function sync(){
-    var match = choices.filter(function(c){ return c.label===q.value; })[0];
+    var list = getList();
+    var match = list.filter(function(c){ return c.label===q.value; })[0];
     hidden.value = match ? match.value : "";
     if(onChange) onChange(hidden.value, match);
   }
-  q.addEventListener("input", sync);
-  q.addEventListener("change", sync);
+  q.addEventListener("focus", function(){ renderDropdown(q.value); });
+  q.addEventListener("input", function(){ renderDropdown(q.value); sync(); });
+  q.addEventListener("blur", function(){ setTimeout(function(){ listEl.classList.remove("open"); }, 180); });
+  listEl.addEventListener("mousedown", function(e){ e.preventDefault(); });
+  listEl.addEventListener("click", function(e){
+    var item = e.target.closest(".combo-item");
+    if(!item) return;
+    q.value = item.dataset.label;
+    hidden.value = item.dataset.value;
+    listEl.classList.remove("open");
+    if(onChange) onChange(hidden.value, {value:item.dataset.value, label:item.dataset.label});
+  });
+}
+/* Same idea for plain free-typing fields that just offer suggestions
+   (category, wholesaler, customer) — any value is fine, this only helps
+   you pick an existing one fast when you tap in. */
+function freeComboHtml(fieldId, value, placeholder){
+  return '<div class="combo-wrap">'+
+    '<input type="text" id="'+fieldId+'" autocomplete="off" value="'+escapeHtml(value||"")+'" placeholder="'+escapeHtml(placeholder||"")+'">'+
+    '<div class="combo-list" id="'+fieldId+'_dl"></div>'+
+  '</div>';
+}
+function wireFreeCombo(fieldId, optionsProvider){
+  var input = document.getElementById(fieldId);
+  var listEl = document.getElementById(fieldId+"_dl");
+  if(!input || !listEl) return;
+  function render(filterText){
+    var opts = optionsProvider();
+    var f = (filterText||"").toLowerCase();
+    var filtered = f ? opts.filter(function(o){ return o.toLowerCase().indexOf(f)>=0; }) : opts;
+    listEl.innerHTML = filtered.length
+      ? filtered.map(function(o){ return '<div class="combo-item" data-value="'+escapeHtml(o)+'">'+escapeHtml(o)+'</div>'; }).join("")
+      : (filterText ? '<div class="combo-empty">No matches — will save "'+escapeHtml(filterText)+'" as new</div>' : '<div class="combo-empty">Nothing saved yet — just type a new one</div>');
+    listEl.classList.add("open");
+  }
+  input.addEventListener("focus", function(){ render(input.value); });
+  input.addEventListener("input", function(){ render(input.value); });
+  input.addEventListener("blur", function(){ setTimeout(function(){ listEl.classList.remove("open"); }, 180); });
+  listEl.addEventListener("mousedown", function(e){ e.preventDefault(); });
+  listEl.addEventListener("click", function(e){
+    var item = e.target.closest(".combo-item");
+    if(!item) return;
+    input.value = item.dataset.value;
+    listEl.classList.remove("open");
+    input.dispatchEvent(new Event("input"));
+  });
 }
 async function addCategoryQuick(name){
   name = (name||"").trim();
@@ -1621,9 +1701,9 @@ function openItemModal(existing){
         '</div>'+
       '</div>'+
       '<div class="field"><label>Name</label><input id="f_name" value="'+escapeHtml(it.name||"")+'" placeholder="e.g. Red Banarasi Silk"></div>'+
-      '<div class="field"><label>Category</label><input id="f_category" list="categoryList" value="'+escapeHtml(it.category||"")+'" placeholder="Type to search or add new"></div>'+
+      '<div class="field"><label>Category</label>'+freeComboHtml("f_category", it.category||"", "Tap to choose or type new")+'</div>'+
       '<div class="field"><label>Color</label><input id="f_color" value="'+escapeHtml(it.color||"")+'" placeholder="e.g. Maroon"></div>'+
-      '<div class="field"><label>Wholesaler / source</label><input id="f_wholesaler" list="wholesalerList" value="'+escapeHtml(it.wholesaler||"")+'" placeholder="Supplier name"></div>'+
+      '<div class="field"><label>Wholesaler / source</label>'+freeComboHtml("f_wholesaler", it.wholesaler||"", "Supplier name")+'</div>'+
       '<div class="field"><label>Cost price (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+(it.costPrice!==undefined?it.costPrice:"")+'"></div>'+
       '<div class="field"><label>Selling price (₹)</label><input id="f_price" type="number" min="0" step="1" value="'+(it.sellingPrice!==undefined?it.sellingPrice:"")+'"></div>'+
       '<div class="field"><label>'+(existing?'Current stock':'Opening stock')+'</label><input id="f_stock" type="number" min="0" step="1" value="'+(it.stock!==undefined?it.stock:0)+'"></div>'+
@@ -1638,6 +1718,8 @@ function openItemModal(existing){
     '</div>'
   );
   $("#f_cancel").addEventListener("click", closeModal);
+  wireFreeCombo("f_category", function(){ return state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES; });
+  wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
   $("#f_photo").addEventListener("change", async function(e){
     var file = e.target.files[0];
     if(!file) return;
@@ -1711,7 +1793,7 @@ function openPurchaseModal(existingPurchase){
         '<label>Saree name</label><input id="f_newname" placeholder="e.g. Red Banarasi Silk">'+
       '</div>'+
       '<div class="field" id="grpNewCategory" style="'+(mode==="new"?"":"display:none;")+'">'+
-        '<label>Category</label><input id="f_newcategory" list="categoryList" placeholder="Type to search or add new">'+
+        '<label>Category</label>'+freeComboHtml("f_newcategory", "", "Tap to choose or type new")+
       '</div>'+
       '<div class="field" id="grpNewColor" style="'+(mode==="new"?"":"display:none;")+'">'+
         '<label>Color</label><input id="f_newcolor" placeholder="e.g. Maroon">'+
@@ -1722,7 +1804,7 @@ function openPurchaseModal(existingPurchase){
       '<div class="field" id="grpNewReorder" style="'+(mode==="new"?"":"display:none;")+'">'+
         '<label>Reorder level</label><input id="f_newreorder" type="number" min="0" step="1" value="2">'+
       '</div>'+
-      '<div class="field"><label>Wholesaler</label><input id="f_wholesaler" list="wholesalerList" value="'+escapeHtml(isEdit?(existingPurchase.wholesaler||""):"")+'" placeholder="Supplier name"></div>'+
+      '<div class="field"><label>Wholesaler</label>'+freeComboHtml("f_wholesaler", isEdit?(existingPurchase.wholesaler||""):"", "Supplier name")+'</div>'+
       '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingPurchase.date:todayStr())+'"></div>'+
       '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingPurchase.qty:1)+'"></div>'+
       '<div class="field"><label>Unit cost (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+(isEdit?existingPurchase.unitCost:"")+'"></div>'+
@@ -1735,6 +1817,10 @@ function openPurchaseModal(existingPurchase){
     '</div>'
   );
   var wField = $("#f_wholesaler");
+  wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
+  if(!isEdit){
+    wireFreeCombo("f_newcategory", function(){ return state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES; });
+  }
 
   if(!isEdit){
     function setMode(m){
@@ -1800,19 +1886,21 @@ function openSaleModal(existingSale){
   var isEdit = !!existingSale;
   if(!isEdit && state.inventory.length===0){ toast("Add an inventory item first.", "error"); return; }
   var editItem = isEdit ? findItem(existingSale.itemId) : null;
+  var saleCategoryFilter = "";
   openModal(
     '<h3>'+(isEdit?'Edit sale':'Record sale')+'</h3>'+
     (isEdit ? '<p class="hint" style="margin:-4px 0 10px 0;">Item: <strong>'+escapeHtml(existingSale.itemName)+'</strong> (can\'t be changed — delete and re-add if it was the wrong item)</p>' : '')+
     '<div class="form-grid">'+
-      (isEdit ? '' : '<div class="field full"><label>Item</label>'+searchableSelectHtml("f_item", itemChoices(), "", "Type an item name…")+'</div>')+
+      (isEdit ? '' : '<div class="field full"><label>Filter by category (optional)</label><select id="f_categoryfilter">'+categoryFilterOptionsHtml()+'</select></div>')+
+      (isEdit ? '' : '<div class="field full"><label>Item</label>'+searchableSelectHtml("f_item", function(){return itemChoices(saleCategoryFilter);}, "", "Type an item name…")+'</div>')+
       '<div class="field"><label>Channel</label><select id="f_channel">'+CHANNELS.map(function(c){return '<option'+(isEdit&&existingSale.channel===c?' selected':'')+'>'+c+'</option>';}).join("")+'</select></div>'+
       '<div class="field"><label>Payment method</label><select id="f_payment">'+PAYMENT_METHODS.map(function(p){return '<option'+(isEdit&&existingSale.paymentMethod===p?' selected':'')+'>'+p+'</option>';}).join("")+'</select></div>'+
       '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingSale.date:todayStr())+'"></div>'+
       '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingSale.qty:1)+'"></div>'+
-      '<div class="field"><label>List price (₹)</label><input id="f_listprice" type="number" min="0" step="1" value="'+(isEdit?existingSale.listPriceAtSale:"")+'" readonly style="background:var(--cream);color:var(--ink-soft);"></div>'+
+      '<div class="field"><label>List price (₹)</label><input id="f_listprice" type="number" min="0" step="1" value="'+(isEdit?existingSale.listPriceAtSale:"")+'"></div>'+
       '<div class="field"><label>Sold at (₹)</label><input id="f_price" type="number" min="0" step="1" value="'+(isEdit?existingSale.unitPrice:"")+'"></div>'+
       '<div class="field full"><span class="hint" id="f_discounthint"></span></div>'+
-      '<div class="field"><label>Customer (optional)</label><input id="f_customer" list="customerList" value="'+escapeHtml(isEdit?(existingSale.customer||""):"")+'" placeholder="Name"></div>'+
+      '<div class="field"><label>Customer (optional)</label>'+freeComboHtml("f_customer", isEdit?(existingSale.customer||""):"", "Name")+'</div>'+
       '<div class="field full"><span class="hint" id="f_stockhint"></span></div>'+
       '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(isEdit?(existingSale.notes||""):"")+'</textarea></div>'+
     '</div>'+
@@ -1836,17 +1924,27 @@ function openSaleModal(existingSale){
     if(it){
       $("#f_listprice").value = it.sellingPrice||0;
       if(!isEdit) $("#f_price").value = it.sellingPrice||"";
-      $("#f_stockhint").textContent = "Current stock: "+fmtNum(it.stock)+" · Cost price: "+fmtMoney(it.costPrice);
+      $("#f_stockhint").textContent = "Category: "+(it.category||"—")+" · Current stock: "+fmtNum(it.stock)+" · Cost price: "+fmtMoney(it.costPrice);
     }
     updateDiscountHint();
   }
   if(!isEdit){
-    wireSearchableSelect("f_item", itemChoices(), function(itemId){ syncItem(itemId); });
+    wireSearchableSelect("f_item", function(){return itemChoices(saleCategoryFilter);}, function(itemId){ syncItem(itemId); });
+    $("#f_categoryfilter").addEventListener("change", function(){
+      saleCategoryFilter = this.value;
+      refreshSearchableSelectOptions("f_item", function(){return itemChoices(saleCategoryFilter);});
+      $("#f_item_q").value = "";
+      $("#f_item").value = "";
+      $("#f_stockhint").textContent = "";
+      $("#f_listprice").value = "";
+    });
   } else {
     syncItem();
   }
+  wireFreeCombo("f_customer", function(){ return state.customers.map(function(c){return c.name;}); });
   $("#f_qty").addEventListener("input", updateDiscountHint);
   $("#f_price").addEventListener("input", updateDiscountHint);
+  $("#f_listprice").addEventListener("input", updateDiscountHint);
   $("#f_cancel").addEventListener("click", closeModal);
   $("#f_save").addEventListener("click", async function(){
     var it = currentItem();
