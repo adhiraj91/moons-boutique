@@ -388,8 +388,7 @@
   <div class="login-card" style="text-align:center;">
     <div class="login-logo"><div class="name">No access yet</div></div>
     <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin:0 0 18px 0;">
-      <strong id="accessEmail" style="color:var(--ink);"></strong> isn't on the approved list for Moon's Boutique yet.
-      Ask the owner to add you under ☰ → Manage access.
+      <strong id="accessEmail" style="color:var(--ink);"></strong> <span id="accessMessage">isn't on the approved list for Moon's Boutique yet. Ask the owner to add you under ☰ → Manage access.</span>
     </p>
     <button class="login-submit" id="accessSignOut" type="button" style="background:var(--ink-soft);">Sign out</button>
   </div>
@@ -689,6 +688,7 @@ auth.onAuthStateChanged(function(user){
         setSyncStatus(false, "No access");
         $("#loginScreen").classList.add("hidden");
         $("#accessEmail").textContent = user.email;
+        $("#accessMessage").textContent = "isn't on the approved list for Moon's Boutique yet. Ask the owner to add you under ☰ → Manage access.";
         $("#accessScreen").classList.remove("hidden");
       }
     }).catch(function(err){
@@ -697,6 +697,7 @@ auth.onAuthStateChanged(function(user){
       setSyncStatus(false, "Error");
       $("#loginScreen").classList.add("hidden");
       $("#accessEmail").textContent = user.email;
+      $("#accessMessage").textContent = "Couldn't check access — real error: "+(err && err.code ? err.code+" — " : "")+(err && err.message ? err.message : "unknown error")+". This is a bug, not a permissions setup issue — screenshot this exact text.";
       $("#accessScreen").classList.remove("hidden");
     });
   } else {
