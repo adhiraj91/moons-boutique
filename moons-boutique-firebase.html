@@ -677,6 +677,8 @@ auth.onAuthStateChanged(function(user){
   if(user){
     db = makeDbShim();
     setSyncStatus(true, "Checking access…");
+    var lookupPath = memberDocRef(user.email).path;
+    alert("Signed in as: "+user.email+"\nChecking path: "+lookupPath);
     memberDocRef(user.email).get().then(function(snap){
       if(snap.exists){
         currentMemberRole = snap.data().role || "member";
@@ -690,7 +692,9 @@ auth.onAuthStateChanged(function(user){
         setSyncStatus(false, "No access");
         $("#loginScreen").classList.add("hidden");
         $("#accessEmail").textContent = user.email;
-        $("#accessMessage").textContent = "isn't on the approved list for Moon's Boutique yet. (Looked for a document at: "+snap.ref.path+" — didn't find it.) Ask the owner to add you under ☰ → Manage access.";
+        var msg1 = "Looked for a document at: "+snap.ref.path+" — didn't find it. Logged-in email was: "+user.email;
+        alert(msg1);
+        $("#accessMessage").textContent = msg1;
         $("#accessScreen").classList.remove("hidden");
       }
     }).catch(function(err){
@@ -699,7 +703,9 @@ auth.onAuthStateChanged(function(user){
       setSyncStatus(false, "Error");
       $("#loginScreen").classList.add("hidden");
       $("#accessEmail").textContent = user.email;
-      $("#accessMessage").textContent = "Couldn't check access — real error: "+(err && err.code ? err.code+" — " : "")+(err && err.message ? err.message : "unknown error")+". This is a bug, not a permissions setup issue — screenshot this exact text.";
+      var msg2 = "Couldn't check access — real error: "+(err && err.code ? err.code+" — " : "")+(err && err.message ? err.message : "unknown error");
+      alert(msg2);
+      $("#accessMessage").textContent = msg2;
       $("#accessScreen").classList.remove("hidden");
     });
   } else {
