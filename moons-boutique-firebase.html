@@ -2032,9 +2032,9 @@ function openAdjustmentModal(){
 }
 
 $("#btnAddItem").addEventListener("click", function(){ openItemModal(null); });
-$("#btnAddPurchase").addEventListener("click", openPurchaseModal);
-$("#btnAddSale").addEventListener("click", openSaleModal);
-$("#btnAddAdjustment").addEventListener("click", openAdjustmentModal);
+$("#btnAddPurchase").addEventListener("click", function(){ openPurchaseModal(); });
+$("#btnAddSale").addEventListener("click", function(){ openSaleModal(); });
+$("#btnAddAdjustment").addEventListener("click", function(){ openAdjustmentModal(); });
 
 /* ---------------- render: dashboard ---------------- */
 function renderDashboard(){
