@@ -932,7 +932,7 @@ async function deleteItem(id){
 async function recordPurchase(data){
   if(state.dbOffline){ toast("Please log in first.", "error"); return; }
   var item = findItem(data.itemId);
-  if(!item) return;
+  if(!item){ toast("Couldn't find that item — please pick it from the list again.", "error"); return; }
   var newStock = (item.stock||0) + data.qty;
   var updates = { stock:newStock };
   if(data.updateCost) updates.costPrice = data.unitCost;
@@ -1001,7 +1001,7 @@ async function updatePurchase(purchase, data){
 async function recordSale(data){
   if(state.dbOffline){ toast("Please log in first.", "error"); return; }
   var item = findItem(data.itemId);
-  if(!item) return;
+  if(!item){ toast("Couldn't find that item — please pick it from the list again.", "error"); return; }
   var newStock = (item.stock||0) - data.qty;
   if(newStock < 0) newStock = 0;
   await db.doc("inventory/"+item.id).update({stock:newStock});
@@ -1059,7 +1059,7 @@ async function deleteSale(s){
 async function recordAdjustment(data){
   if(state.dbOffline){ toast("Please log in first.", "error"); return; }
   var item = findItem(data.itemId);
-  if(!item) return;
+  if(!item){ toast("Couldn't find that item — please pick it from the list again.", "error"); return; }
   var delta = data.type==="in" ? data.qty : -data.qty;
   var newStock = Math.max(0, (item.stock||0) + delta);
   await db.doc("inventory/"+item.id).update({stock:newStock});
@@ -1973,6 +1973,7 @@ function openSaleModal(existingSale){
   $("#f_save").addEventListener("click", async function(){
     var it = currentItem();
     var itemId = isEdit ? existingSale.itemId : $("#f_item").value;
+    if(!isEdit && !itemId){ toast("Choose an item from the list — tap a suggestion, don't just type.", "error"); return; }
     var qty = Number($("#f_qty").value);
     var price = Number($("#f_price").value);
     var listPrice = Number($("#f_listprice").value)||price;
