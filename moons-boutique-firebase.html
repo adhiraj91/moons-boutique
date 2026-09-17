@@ -49,6 +49,11 @@
     position:fixed;inset:0;background:linear-gradient(160deg,var(--maroon) 0%,var(--maroon-dark) 100%);
     z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;
   }
+  #accessScreen{
+    position:fixed;inset:0;background:linear-gradient(160deg,var(--maroon) 0%,var(--maroon-dark) 100%);
+    z-index:501;display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  #accessScreen.hidden{display:none;}
   #loginScreen.hidden{display:none;}
   .hidden{display:none;}
   .login-card{
@@ -360,7 +365,7 @@
 </head>
 <body>
 
-<div style="position:fixed;bottom:4px;right:6px;font-size:10px;color:rgba(0,0,0,0.35);z-index:9999;pointer-events:none;">build-2026-09-17-G-SIGNOUT</div>
+<div style="position:fixed;bottom:4px;right:6px;font-size:10px;color:rgba(0,0,0,0.35);z-index:9999;pointer-events:none;">build-2026-09-17-H-CSSFIX</div>
 <div id="debugBanner" style="position:fixed;top:0;left:0;right:0;background:#FFEB3B;color:#000;font-size:12px;padding:8px;z-index:99999;word-break:break-word;font-family:monospace;">DEBUG: script not yet run</div>
 
 <div id="loginScreen">
@@ -387,7 +392,7 @@
   </div>
 </div>
 
-<div id="accessScreen" class="hidden" style="position:fixed;inset:0;background:linear-gradient(160deg,var(--maroon) 0%,var(--maroon-dark) 100%);z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;">
+<div id="accessScreen" class="hidden">
   <div class="login-card" style="text-align:center;">
     <div class="login-logo"><div class="name">No access yet</div></div>
     <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin:0 0 18px 0;">
