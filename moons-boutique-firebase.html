@@ -54,6 +54,13 @@
     z-index:501;display:flex;align-items:center;justify-content:center;padding:24px;
   }
   #accessScreen.hidden{display:none;}
+  #loadingScreen{
+    position:fixed;inset:0;background:linear-gradient(160deg,var(--maroon) 0%,var(--maroon-dark) 100%);
+    z-index:600;display:flex;align-items:center;justify-content:center;
+  }
+  #loadingScreen.hidden{display:none;}
+  @keyframes loadingPulse{0%,100%{opacity:0.5;}50%{opacity:1;}}
+  #loadingScreen img{animation:loadingPulse 1.4s ease-in-out infinite;}
   #loginScreen.hidden{display:none;}
   .hidden{display:none;}
   .login-card{
@@ -391,7 +398,11 @@
 <body>
 
 
-<div id="loginScreen">
+<div id="loadingScreen">
+  <img id="loadingLogoImg" alt="" style="width:64px;height:64px;border-radius:50%;box-shadow:0 0 0 2px rgba(184,134,11,0.5);opacity:0.9;">
+</div>
+
+<div id="loginScreen" class="hidden">
   <div class="login-card">
     <div class="login-logo">
       <img id="loginLogoImg" alt="Moon's Boutique logo">
@@ -711,6 +722,7 @@ function memberDocRef(email){
 var currentMemberRole = null; // 'owner' | 'member' | null
 
 auth.onAuthStateChanged(function(user){
+  $("#loadingScreen").classList.add("hidden");
   unsubscribers.forEach(function(u){ try{ u(); }catch(e){} });
   unsubscribers = [];
   $("#accessScreen").classList.add("hidden");
@@ -768,7 +780,7 @@ function setSyncStatus(ok, text){
 /* ---------------- login screen wiring ---------------- */
 (function(){
   var headerLogo = $(".brand-logo");
-  if(headerLogo) $("#loginLogoImg").src = headerLogo.src;
+  if(headerLogo){ $("#loginLogoImg").src = headerLogo.src; $("#loadingLogoImg").src = headerLogo.src; }
   var mode = "login";
   function setAuthMode(m){
     mode = m;
