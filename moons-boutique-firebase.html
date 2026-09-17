@@ -50,6 +50,7 @@
     z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;
   }
   #loginScreen.hidden{display:none;}
+  .hidden{display:none;}
   .login-card{
     background:var(--panel);border-radius:16px;padding:32px 26px;max-width:380px;width:100%;
     box-shadow:0 20px 60px rgba(0,0,0,0.3);
@@ -383,6 +384,17 @@
   </div>
 </div>
 
+<div id="accessScreen" class="hidden" style="position:fixed;inset:0;background:linear-gradient(160deg,var(--maroon) 0%,var(--maroon-dark) 100%);z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;">
+  <div class="login-card" style="text-align:center;">
+    <div class="login-logo"><div class="name">No access yet</div></div>
+    <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin:0 0 18px 0;">
+      <strong id="accessEmail" style="color:var(--ink);"></strong> isn't on the approved list for Moon's Boutique yet.
+      Ask the owner to add you under ☰ → Manage access.
+    </p>
+    <button class="login-submit" id="accessSignOut" type="button" style="background:var(--ink-soft);">Sign out</button>
+  </div>
+</div>
+
 <div class="app-header">
   <div class="header-top">
     <div class="brand"><img class="brand-logo" alt="Moon's Boutique logo" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAEEAQQDASIAAhEBAxEB/8QAHAAAAQUBAQEAAAAAAAAAAAAAAAMEBQYHAQII/8QASxAAAQMDAwEFBQQGBggEBwAAAQIDBAAFEQYSITEHEyJBURQyYXGBI0JikRVSgqGxwQgWM0NykiRTY3ODotHwF7Ph8TVEVHSTo8L/xAAbAQACAwEBAQAAAAAAAAAAAAAABAIDBQEGB//EADQRAAEDAQUECgEFAQEBAAAAAAEAAgMRBBIhMVETQYHwBSIyYXGRobHB0eEUIzNC8RUGcv/aAAwDAQACEQMRAD8A+MqKKKEIooooQiiiihCKKKKEIoqR0/ZLtqC5tWyy26TPmOnCGmEFSj8fgPieK0tvs60ho5KXu0vU++4DBFgsZS/Jz6OOe438uvxpea1RxG6TU6DE+XzkrGROfiMtVk7DD0h5LLDS3XVnCUISVKUfgByautr7KtYyYqZs+C1ZIRGfaLq8IycfJXi/dV01x2hp0S81p/s9sFu0w8mMkzn0tpkTEOKGe7LywTlKSN2PvEgdKyK9Xq7XuWqXd7lLnvqOS5IdKz+/pVEctptDQ5gDGnXE+QwHmVa5kURo7E+QVrd07oK1Ei6azcuTo6tWqKVJ+XeL4pI3zQEIj2DR8qcodFz5xGf2UcVSsk9aKs/S17b3HjT2oo7enZaBwr71V5R2hCL/APDNIaZiehMQuK/MmlUdrWrW+I/6Ljj0bgNjH7qoVFcNgsxzYD44+67+qmGTqLQB2w64xhU6IseiobZH8K7/AOLWoXBtl2zT0xJ6h62o5/LFZ9RXP+fZRlGPJd/VTb3FaCnXunJeReOzewv7veXEWuOr92a9992R3Twrhaj0+4fvNuJktj6HxYrPQK6BR+iYOwSPAn2NR6I/UOPaAPAK/K7Orbcxu0prSz3NR5EeQTGe+WFdTVZ1BpHUdiJNztEphA/vAnc3/mGRUT51YrDrLUtmSG4l1fUx0LDx7xsj0wrp9MUXbRHk4O8cD5jD0RWF2Yp4fR+1V65V7cu2lNQE/pu0foqWrrLgDwE+qkf+9RV40fNjRzOtbzV2g9Q9H5UB+JPUfTNWNtLa3Xi6e/LzyUXQGlWGo53KtZrldIx5VymVQiiiihCKKKKEIooooQiiu0UIXKKKKEIooooQiiil4MWTNltRIjDj77qghtttO5SlHoABQTTEozSFXWwaJQi3N33V842W0L5aSU5ky/g031x+I8VJot1n7PkpXdGo151VgKTCJ3xrefIuke+4P1RwKql5uNzvtycuF1luypLnVaz0HoB0A+A4pIyvn/jNG66+H2eA3pnZtj7eJ0+/pWef2gyYdudsuiYn9W7U4NrqmVZlSR6uO9efQUz0bHZtcWRrO5tpcYgubYLTnPtU0jKR8Uo99XyA86ZaW0+5eJykKeTEhR0d9NmODwRmh1UfU+QT1JIFN9b35q8TGIluZVFs1vQWIEdR8QRnJWv1cWfEo/IdBUBEyuyjGfaO/wA9T6Dgu3zTaO4c6BQc2Q/MluypLqnX3lqcccUclSickn5k0jiiitACmASuaK7RRQhFFFFcK6EV0CgV7Ari6uJFewKEjNKoSKiSpALylPwr0E58qVQjNOWmM8449arL6KQamoR6Cndtmzba/wB/CkOML89p4V8x0NdcVHZUElRWcZwnmuoXHXhJ3Nn8Y4/OonrDEYKYwOBUq8uz6iyJqG7ZcSOJDYw06fxDy+f76rd4tU21SO5ltFOfcWOUrHqDUguPgZHIPQ+VPbfc+7jm33Fn2uArqhXvN/FJ8qrY50fZxGn19KbgJO1gdftVOipy/wBiMRlNwgO+1W5w+F0dUH9VQ8jUHTbHteKtSr2FhoUUUUVNRRRRRQhd+lFcooQiiiihCKKKUjsuyH22GG1uuuKCEIQMqUScAAeZoQlrVb5l0uLFvt8dyTKkLCGmmxlSlHyrTkCJoGE5bLG43L1M6ktzrojxIiA9WWD+t5KX+Xw9MxBoK2LtUEpXqmY3tuEpJB9hbI/sGz+uR7yh06U80BpSVdZrTAY3b1AYyM1i2q1NkF49gev4018Fp2ezEGn9vb8qiotT7yipSVKUo5JPJJ8yamtO6Pl3aQ7sWzEhRUd5NnSDtYit/rLP8EjlR4Ar6huPY1ZtNacRdb/L7lHd7u6aA75Z/VGeB8zwK+c+1a/yboU2qKiNbLJGcK48COvKSrp3jiurjn4j06AAVTFbXzOuNFPH6VklmYxt6tVWdc6jhPQ06b0w29HsTC963HRtenujjvncdB+qjokfEmqZTt9KQT48/KmywAa2YWNY2jVnSOLjUrzRRRV6pRRRRQhFdFcr0kVFSC9AV6Ca4OtKgdKiSurqE5pdtHNeW0jNO2G8kVU5ysaFwJQ00XHOgpCOiZcnw1HacVk+FCRnNepp76WiKMkA9B5mvoTsT0QymI1IfYSFqAJBHIpW0WkWdgcRUnJO2SyG0vu1oBmsdiaH1GtvwWqRuUOpTimV301qK1tFc63PBrzGK+4Yen2G293dJPGM4pC66Uhz4623WEqSoYIKeDSzOkZj/ULQd0XBucV8JJeLADrWVMK99B8j8KdONocaDjSgpJ5BFXbte0ajTWqnmobJTAkjJBHCSf8A1rN2HVwZqm18o3bVj+daIIlaHtWNIwwvLHKVtdwftryikJcZcG15lfKXB8f+tI6gszAj/pa0EuQVH7Rs+8wr0Pw+NdlISDkHIIyD61y13B22yi4hIcaWNrzSvdcT6GoAEG+zP3RgRddl7Kv0VN6ktTUdLdxtxLlvke4fNtXmg1CU2x4e28Es9hYaFFFFFTUUUUUUIRRRRQhArTNIQ0aJ06xquW2ld+uSSmyR1JyWUdFSSPXnCB9ahOyzTUW9XZ643lYYsNqQJNweUcApz4Wx8VHj5ZqZ1Prcz79IuNrZ7p5zwIlrSN7bY4S20no0kD08R5ORWdapHSv2LBUb/rjv7vFOWdgY3aOPh9pa16fcSsTdRzzADp7wtrHeS3c8k93njPqsir3au0C16OaQNPW9DEsjAffV3sgj9YqxhA+CQM+tY1Iui4oLillyQ74vGcn/ABK9f51FKmOqUpxxwqWs5Uonk1Q+wGbGQ17shz4q9trEfYC2fVnazeb3D7iZNddSc53KzWU3iZ37hVnOajVySU4Kx+dILdPnV1nsLIeyFXNa3SYFDh5pEnJrqlZ6V5rQAokyUUUUVJQRRRRXCuhdFe014FKJrhUgvSRS6B8KTQKXQmq3FSalG05INSMNBznFNGk+dSUNORgdcUtI5XsC9aGisv6gfmvx3ZRaX9ky2nKlrJ/gAK+itGa3gWVtlq/2i6WhKiEB5xgls56cisn0BAuEPSD16tEByRLkyFhvaOQgHA58uRWq6Qn6kSp5q72qbMs6UblKdZJDvu5TsyrByT6cJzk5xWfO0Tymoywz0WzZQYYm0NK45araYkhMhLDkcpcgrZLplB0BIORhO3qcgk56cUyuerdLwFuMyNQ29taE5KFOgGmWi5rC9LuK7nawtSkNJIwNoOB+6sy1Rq7TsGYqWu0W1yEl/uFvKaQ4orAJ6KOcYHpUbMA6mCYnq2uOSddqcKy6308/cLLNZlORM7+7OTj0/mK+Tr2hImqwOQSk/Svr+3Lsmq0vvWSMzbLtCGxRjo7vpz3bqMcpI8iOK+ae22ztWjXUlqPgNPgPAD7pV1H5itGyuDXlgWVb4y5gkKg4Z722tlXJTlP5U1fHJqUiMBu1tDHKk7j9aYSRg1Y09Y0SJGAS1kntR1uQ5wK4EkbXk/q+ix8RUbfLc5bJ64yyFo95twdFoPQiuLHnU5bgL9ZV2hzHt0RJchKPVafvN/8ASpE7M392/wC/vu8FEC+Lu/d9Kq0V1QKSQQQR1BrlNJdFFFFCEV7YacfeQy0hS3FqCUpSMlRJwAK8VoHY9Cjwnbnri4tBcPT7IdZQro9LXwyj48+L6Cqp5dlGXck7hxKnGy+4NTrtEU3piwwOz2E4kusbZl6cQf7SWpOQ3nzDaSB86o/eCO13hAKj7iT5n1Pwr3KlPTZki4TnVOvPOKdecJ5UpRyfzJqOfdU64Vq49B5AelQs8OzZQ4nM953qUsl51RluQtaluFa1FSickmvojsK0VZP6mQ71PtkW4z7q8UIMhoOJYbClDhJ4zhKiT8hXzpWrdh+v7rbblbtLvssy7QuSXFbgQ5HTtUVqSrI8IGVEHPGcdaR6ZhnlsxEJoRie8BM9HyRsm/cH+r6j0/pPTDVv/RzenLSIquCz7G2QrPrkc18tf0jtJ6a05qxEnSUqO5bpZcQ7HZc3oiSG9u9sHnjC0HGTjJHlXjtM7S9Q3J1EWxzrva7A6ztZaMoqMgblFS1L685wU5O3GKretGnbfpvTVokttMSWo7sl5kKBWC8vclSwPdJbDfHXAHrWb0P0ZaLJIJJZCb275PfzVNW+1xTNLWNy3/SqdFFFeoWOiiiihCKKKK4V0L0KUQKTTSqKiVIJRA5pdoEnmkkCnDQ6VU4qxqdsJyPhUpCT4Tjrjio+PnFS8AIDiCtJUkEFQBwSPOk5TgmGBfUfYdaYxsUWGlpHdMtJSB5dOT+Zqf13JtlubXbmVtIWpOXFqVsaQPT4q+FM+yll0WdbsQ8d3uA+lV2Rdb5qHU9ys9p04m4m2Ed/3joSVE590H3s4JrCBe6OoGJXrgIw8DIALRI8ZqHZ4bbRjvoUkFLQdCSR8KSOnLPecvtRWVEDatp1pKij55FR8dq726IPbuz6adn2YSlpLwT0yEnJwMkdKXRqy0SJLUm3OLZmxVJjzIjiCh1KSRglPwJ6+hpwAsYCl7oc7Ve4um7Rp9DohRGorqwcqbRtz88V8x9rWnZeo+0ptqMgJaYY3yCo42oBJJ/Kvra+FcwBa87gOawu/GLa5GoL8+lp15Cww0lQ5B28fmc/kaYZLc6zUtPFG8BpyzPBYjqCMmJOeiJCUhk7NieQkgDI+hzVclpOTVguSnHXHHXDlxaipR9STzUHMHUCmoTgsOYgkkKMcFcjSHokpqTHVsdaUFJV6EUo6Kbrp0YihShwNVL6witOiPfoadsaeCVpH926PeT/AD/Oq7Vx0O2LxGnaWdI3S0F6GT919AyB9QMVUXEKbcU24koWkkFJHII6iowOpWM5j23fXBdmFaPG/wB968UV2imFSgVpmuUf1d0DpvRrQ2yZCP0xcwOpccGGUH/Cj+NVfswsSdR69tFpd/sHZAVIJ6BpHiXn9kGl+0O+m+6uu98BwmRJUI48ktjwoA+SQPzpOX9ydrNzcT7D5PBXs6sZdrh9/Crk1zxBlJ8KOvxNNqKKcVCl9OafnXxb6mFxo0WMkKky5ToaZZBOBuUfMngAAk+Qqdku2jStpkxrXLVdbrcY5ZM5DRbjssK4WGt3iWpWCkqISANwAJOQ3fKmey63RkcKn3l9xX4u6aaSj8i4v8682OHKbdatU2Kuep93DFrbb3POLPGQerefUckc4I5pQkvq5xwBy8NePgNUwAG0AGOvirD2MMzb2mdphDAXHfdZf9okQ0SY8VQJHjQsjG8EDKTuJSBgjNTXad2Oaqhvv3o321X2TKU693DBLUh0IAUsttEeIJSQSEngYwKselnFacIt0ZuI9coy0MrixDmNGku+BqIk5JdfWeXXSSUtoWlJGTVc7U9VzG7rEv0KY4t2FdTFgPZwFtwwlS3OPJ19xaz64A8qzGzTyWqsJAae7P5x51TZZG2Gj8T7LHKKsnajDjQdf3lqEhKIjkkyI6EjhLboDiAPgErAqtCtuN99ocN6zXNukhdoooqa4iiigVxdC9JpVFJppRHWolSCWbFOmQKbt9adNDoapcrWp3H6ird2esMStV2yPJQHGVyE94kjOU9TVUjYHzqUgLUh1K0K2rSQQfQ0jOLzSE1EaOBX1DoC6OWS8O22YUtBQ3IAG1O084x5YzjFNbvo79N6lRdI8lcV5HiQ4glJV5e8kgj04rHTd4jcmG9Z25McJiNNyw6sKLjoHjUkjyJ5Gea2Ts21jAcYaYuTgSQPCo8D61iEPiIFV6SzzCUVAxVqjad1oIoCdb3VrCtxzLW4ByD0PXkdDU7BsEVl5U+YozZzy0LkzXkjvHtg8IJHQD0pVOpLCiISmQknyCVZJ+gqAv8Aq5qOyS4O7B91HmfnTxkqyhNVEtcXYNp4ABSur71Gg2995xYSracH0FZLq+x3OT2aSpjkuElt11U9TZQkuBschO73snKVY6cH0zVe7QNUT506NDAUI8gqU4T+onHHyJI/fUzetcTG+z0NyLS93dwS/DS4HSI7hSlIVhJBxtC/I5yPQmuVyCRtDhW6sMnowtQqElpqcnHKiSc1DTBk/CtCErJkUU6ME02WBmnj4posHJp1qVcF7tsx+3XKPPjK2vR3UuoPxBzU92qw46dQN3mAkCFeGEzWsDhKle+n6Kz+dVpYxVrWsXfss7tXikWOZlJ8+4d8vkFVXL1JGScDxy9aeamzrMczj5fhUqiiinEstH7IUm2ad1lqn3XIds9jjK/2shWwY+IAP51n8xeXA2PdbG0fzrQUkWvsCaOcLu18Uv5oYbwP+Y1nGTSlm6z5H99PLD3qr5sGtb3e/wCKLlFdoHWm1Qr1Fabdt2gYbyd7b011xaf1kqkoQf8AyzVhdky7JJGntMI9o1he9zlxue7xx23Mq7ptR9wbMKWvyHnxxHJZRF1vZLcoEI07aO+kH9VxLbklf5LWE/MU9Dcy9T/0Jp5BF4u8Jh2+3B0bERWe6QVN7vut8bln72QnoDnFkIdSvZxPdiSRXupjTeaLSaKDDPLvyGXf+UtZp8Kx2y4Xm2vd5bNOtLi21/GPbrq+kpVIA8whIUpOeiUI8yai9R2dvdCsspakxNNWESbgU8H2l4953ef1it1pv9k+lSUZyzSZTbjIUvRGjUl3ctO03OYo8ZHq6sAY+62mrLYtEPXPRjl81lcVWm2XJ/8ATV+nHhxxJJ7iO2PU7lLPpvQACeKrM7YTfcae/dxpU01cAu7MyC6Px/laDwCx3WchVxuzEtILijbYYcKRnBRHbSc/5agRX0x2Hat/rB2mxtP6TtEayaPgR3XX2Qwlb0tITsSp9wgkkqUk4zgfGvnnUpjOaluZgISmMqY73CUDgIKztA+mKfstpc+QwubS6Ac9a4HQ4alKzRANDwa1JUdUjDsV7mWuRdIlonyIEYbn5LcdSmmx6qUBgVsvZT2QxGZttk64jOP3Gf8AaW/T6FbXFtjkvSSOW2h6dT06nbUt/SR7Umokd3s50gWI8RlHcXJ2MkJR0wY7YHASPvEdenkc0O6SMk4gs7b2p3Ab/H2rxUxZLsZkkNNBvXznQKK6K1UovaaVQOKSTSqelRKkEs3TtrjGKat1JW6FMmqWiFEkSVNoLiwy0pZSkdVEAcAetLvIGJVzEox5HzqRi8EUyhtqWpKUpKlLISlKRkqJ6ADzNX2xaEvE2fDgAtty5CO8DPJUhvJG5XkOh8/InoDSczw3NNQxufkFEQzjA8hWn9m9k/SkUFDim3UjIUPTPQ1Gw9DCGy89KfbkL3KbZQ2SUEg4Ksjr8OnkeRmr92aQ3opcjABK92cnqAaw7bKDRoW90dA5lXlSFu09ee/U03dGG0Djc2wAr88VKP6VgRGVPvrdmv4yd3Oas7KGITXePuJHz86j7vclKSmOhlSe9SSAVbVFPTjHKeSOfLj1qEJujHNNySHPcsQ1xDkC4KllopQnwBAScAfCqbc5klUNuGp91TDS1KbaUslCCrG4gdATgZ+Va5rKfb4kVH6UuCDIU2Psk+JYB59we71+FZRd3rbJcUILMzPllsBJ/fxTcF52YVM3RdomG0iaTVVWYrKjxUTKHrVilW6StBWhonHBGRnPyzUBOQttxSFgpUnggjBFasS89aIZIXFsgIPeot4U0c607fPNNXOtOtSLkgvrVk7O1B+4T7Os+C5QnGQPxgbk/wADVcVT7S8v2LUlulZwG5KN3yJwf3GidpdE4DPmiInXXglQ60lKilQwQcEUVK6uiiHqe5Rk+6iQvb8icj+NFXscHtDhvVTm3SQrb2ikROzXQNsTxuhSJix6lx04P5Cs8rQe2cFlvR0Tya01F/5isms+paxfwg6knzJKttP8lNKeyKltHQRc9WWm3rGUSJjTa/8ACVDd+7NRNWXs6UuPf3LkgA+wQZUnn1SyoJ/5imrp3FsbiM6KEQBeAVedIWiRqa4Xm4pQSq/z3Wwc4KYjaw6+oHyBPct5/Er0ou09V6kTdIaRkNM25alSdQXtfhQ8AfESfusI6JSPe49eVb0/MtWnDpyyIUubKUxY2NnCikIS9II/xuvAE+gqOg2eVqCYz2daPWDbmFpcu9xA8Eh0cFxR820nKUJ8zz58YYN4mVxo0ZaAD+x8MABqK+Gm4UAY0Y79STuHydFO9nthY19qCHZrYw+zoawOd64XE4XOePVS/wAa8dPuIGPPmL/pG69lah1Q/puGrubPaXi0GkHAeeTwpZA8hylI8h862/Tq7NpdyFoaxNgJjqjiUs8qK3VEgK/GpDbij6AJHpXyTLal3bVDrSUH2uZNUkJPXvFuYx+Zqrowi1Wl0zhRrB1a545uPeV22NMMIjBxcceG7wC2zsmA0L2Aan1ssBE+7ZiQieuOW0kftKWr9gVX9P2+2dlVii6q1FEam6tmt97ZrU8Mpho8pL6fX9VP8+RrHaibFofRunjcG2pUOwoAt1vV0mzUpCUKWP1EeJZ9SofXF+yWFO7S+2hibqB5U096Z85S+ikoxtRjySVbE49KhZZtvFLaX4MJJPeBgGjhn401RNHs3sib2hQDuJzP15rSrnd7j2Z9lcjU14luSdfau6POnLkdsjIA9AhJBwONykj7tfNK1LccK1FSlKOSSckmtE/pC6qc1b2nTQwtTkOAr2KIkdDtJClAfiXuPyxV2uUW0diOjIK0w4s7Xl1a3h59sOJgo8yhJ4yD4QfvKBPQYpyyO/SxNLm1llxplw7g0KiZu2eQDRjN/O8lYK6240ra62pCsZwoEGuDNbTrdm7X/sQsFzvU1y73qdc3JEd+TtbdZjbNqkFSsZRvAI8uRjFSr9utHYloWHcJMKHcdc3ZJLBeSHUQk45KQePDkDP3lH0FM/8ARF0ANq8kgAHOmZroN5oqv0hrn1QAa+PysGUhxtW1xCkKxnChg/vr0g5OMgVsWsUXW/dh1kul8mru14nXVx+K+/tQ4xG2FK0lSsfZ7wCPLkYxVnl6Lt+luxhmx3f2OK9cXEzbxc1tB0w0AgoQ15qcVgIQkHklZOACai7pJrQ28MS4toO7M5bvDPBTFkJJocAKr5/bGK0Hso1qez8XS9IeL70mKY7cNLfCl5ylxxZ91KTk4Tkq6HA5qz6nsujofYQ1emdOot86fLSm0vPOlyU62Ff2jiuniSlZKUjaAU/Oqn2YxLZb9R2O/amU23ajODbDbiQe/d6biD/dtkgqV64Hrit88dpgfVpIBIprTcM1NsbopG0OOulVYOze0ewW5epLvBWh+QD7Ip9ooSknoE5GOTjkc/StO0aoxdOT7qtxKJU95cZ0hRPd7AnvCkjGBk7cY52kZ65gNWzL1ZNR3m1yI79xcnv+1suBSluONpJU2lCfgohJI6AY4Gc2TRcJ1vRDNpafEm5wXnH3g0jcVd6QpS04zv2r3Zx6jy5pJk+265zOVNPwtLZ7Nl0cVJriCO1HdS2nLrSMLznCxncn5jI/OpnT0FyMlT7riWlOHkqOKiWUSYsdJU5t4bSprnCAEgYUnBwokfHA9adfoafcGWUqjoid64G2nJKw04VZR4EDG5RVtSApHGcnjNKuspe+oTkdrLWBtFJyb1HZV/ozZkKwCJLiT3SMjIJ8yCM8jgY5qHv15Rp9oXO7Nhd0fSHIUBXOSOO9f8tgIOEjG4gelN9d3SRoZz2Nm0SHJ4G0TpTG2O2DkDum+UqOD7yvPyq3OaV0ZrTSNr1Nc5DkSc9ER7RKbeALywAFFe7IKsjr1p2z2QDPNaENnu3J7WDs3aYk/QPms40X2cq15p243WLcA3eGpp71Lw+yeCkhWcgZSrOeeR8qcWHROo9FautVxuNsj+yokpS44H0LbCFcKKuc4wT5VcNHxFaMXclWSa/PhTAja67DU2Gind5qKEqyM8g+RpWdJkzJfeTpzzi96UEshAJBWlBAITxgrScZVkHrWgGClStaXpCd8j446GI5Ag1xGX+pTWCtH3bvGGtIWuceqnnGw1n5BICvrWO6qslmmBNpcsUaIyCQwuO6tTzBPnlZJUAedp4x6VpRmZMJcVpDXePxio8uEhbkTIyrz+0WCQBwajHiH7LbX33O+dUtaF7vEclyWMEH4hOP8I9KkSCcFnmwtdDR+IyxJ7+C+V9SWqXZrtIts1G15he1WOih1Ch8CMEfOoZzrX0T/SQ0il6yxdURGQhcT7CShPOGSfAT67ScZ9D8K+eHRhVMtXiLXAYZC1N10mFFKgsdUnIpRXxpNXQ/KrQk1PdpSR/Whb46SGGnvzQP+lFOdbsd/ItT2M77WwT+RFFV2ZwETR3K2dtZCVK9t/imaVcHuq01Dx+ShWeVoXa39tp/Qk0f3mn0NE/FtxSTWe1Cw/wAaV9CVy0/yHncirVoGO3LYvMUvFtx6K2glIyrue/bLpSPMhIzj0Bqq0vAlyYMxuXEeUy+2coWnqP+/Sr5WF7aBVxuDXVK26BapsyFCEF1Ht8dt+KmQ4rhpxaGW1vKPlsaQ4fnipzs1uljsWnL3e7U2pGm7GgttKXw5cZWPE6s/VKUJ8gsnrWeWrUDsfsMvDDGG5D91EdxSBja06neQPQHYR9TTrXEj9DdhWk7Gwrabopc2Rj7wByM/VSf8tebmszpTsXZF93h2ifKoGlSVssmawbRu5teOQH2rD2R3WZcZ9ru094uTr3qeQpxXqUQlhIHwCnsD6VnV2mHSfaqm8NxkyEx5jc9ppw4C0qw4Bn9rGfUVKaXuxsmldHXgK8EDUr7jnwGyOT/AMoNP+3GxlMyXKjjebXJLDhH3oryi7Gc+XjW2T+FPrTkQay0lp7LgR5Ej5A4pZ5LoQRm0g+Yr9qr9qeuZ2vNRfpKQz7LGaR3cWKHN4aT1POBkk8k49B5VoP9FBxLc7VSmBuni1hUdA6nBJOP2tlYgKntGMXdU6VNst0NsfgRVyVvpdW2oNggKwUgknxDjzpy1WJjrGbOzqigp5paC0OE4ldiVN6fsp053OrtXxHW223A5At72W3rg8k5yQeUtJPKlkc+6Mk8WrtJv2gdY6ya1fcL/Ndh+zNJVaGoixJKkg5b7w/ZpSSSSoEnk4FUS92bUc3UlzZvM0yZcFnv5suRILiUN+HaoqOSc70gDGcqAxSEHSVym3i1W1h6KRdkb4cgrIacAKgecZBBSoEEZBH1qJhY9wme+jgDllQ4036VrnwUg9zQWNbhXfrzwTjWOtJuptTx7tJjMsRYYbbhQG/7KOyg+FtP5cnzq/8AaZqPQOt9XRNU3LUE4QWoTaFWhqGsSStJJLYWfs0pJPK8n5VlMW1KfZjPe2xGm35CmAp1SkhBSASpXHCcKHTJ+FPblpl+A5CacuNvcXMSwttKFryEPJ3IWcpHGOuMkelTfZYbzLpuloIFNDnrpnmotlko6orWiszOs7dqPtPst01SyIWnLe4htiFHQVtxY6OUICeqhkDcep5+Vd7Y+0KZr3UCy2pxmzxlKTCYPHwLih+ur9w49c1l7TE+PcLxFfdjIbs7pZmSNxLaV7ygJTxlRKgcADyJ6CnEXStxcu5t5cjIPsK7g26VktusJbLm5JAycpSeCByCDg1DYWZr2yD+ooO7f5nepbSUtLDvOK0nW+p9FalsOlS5cJwYs8EMrszMZSFrdwkH7U+BKDtxuGTjoMnhmzFsmrGoMhC7Mu6nLUiNOkOsx7Ywk4bQwy3guI2nOdxJUTkZJNUax2WTcJdqjsvRwu5uFqOFqICVbtviOOMn0zVn7M4zMfUToMlh52Q2C33ZV4cKKcEEA848uopU2dsLCI3GoqfMnngmWyGV4vgUK07tHvbdwioNvfcRAtwYivvBO1TqA4krOfeCMDpnB5z0q/2aDb7ZbTNuDqI7SMEOKVtwfgRzn5c1n90lwrKZaQGH1TEJeQ24ndhwjatLozw3tCRjqeccEk6F2YaW05q/s2ZZnPyjcI0hbbLiHSXGm8DYnCsgpx68/Gs+GytuBjd3qvTQ2WQN28wIjNBXfwGnOKV0bKka6vl0t0LUt3tbcaOHYq0PHetW4DJzzs6cAg89ahn9C9oFu1fDukoqnqYlNr9vEnelKQr3lFR3JGM5z0qbsdmsfZpe5M9y7Ku9yLBbYjNDZ3W7cT3hBIwdoHwPlTW+akueoZSUSnu7jl7YGGzhsJKnEc/rZStGc8cdKfaA0ALWhdspnfpANmRmRjljTI/CvOqu0G3LTNt0FpmcuOPtu9RlkcJVjn3soUTkccVVjKdg29VvjrTGbjJcQwhlIQGjtmp48x4mkn5gVTtPu+0wb1KWnC3YrH5m1LP8UCrMpO24uPPrBCpPiB8wZT4/g9V7Xb1Flijs4uAeaVU6Zl2ely1nmRjk7ioGQP5SAaStanpUpgnLanHGFJH+pz7EQv6n+NI2fc4qJMdSSAthSGSfEVkwSfnkGku/S0xFbddAaDbLkt4f3LSRAVn6An8qK06xV13G6Eyu0xUWNHnQ0pcEZhMmMhSvCtTKYbru78ICc0tpJll+3RW9ylZdjuurPVbiW0KWT8N8pXHwqqapmPRbV7MW9s6VFdhobT0SlbMNpAHoVb9x+Pyq46TYEePEiheHZEdS9x8i8tQST8kKZPyTUWmr1OQhsVFMvR2rhZnIlxZS6zJYSh1vGdwU2nePgcrAr4815YJGmtUTrM/uV3Dn2Sz/AHjZ5Qv6jH1zX11bZQlve1KX3Xf973SM9MrDmcfAOMJ+lZB/SKtCbhZ2r4y2A9bX/Z3MDn2dzCkZ+CVKSPm4qmo3VovNdNWMvYXjNqwBXXmk1edLOe8aRX0NNBeQKt2qlBCbOlR5FrZ/nRTPtDWpq6wmAf7K3sIP+XP86KpszaxAq6Z4DyFL6tzN7G9HTs5MOTMgrPplQWkflms/rQdPAXTsS1JAA3O2q4R7ggeiFgtq/lWfVyyYX2aOPr1vlQnxuu1A9MPhFFdrlNqhT2nJXeWu6WNxeEzW0Os5PHfNElI+qStPzIqy9oDpuPZloi4t5U3GZfgO/gcQoEA/NPNZ6CR0qy6UvsVm2TNOXtLi7POUlwrbSFORXk8JeQD144UnjI+OKTnhN5srRiDX0ofT2TMUvVLHbxT1qE4syhcOzO9W1PL1umM3JAHUtqBZc/IqbNaJpO4M6v0fGlBcVd7ssb9Hzokhzu27lBUcJSpf3SDgJWeErAzjIrOrOzK03ek3Bn2a8WxSFtSDGdCkPx1jatJHvIJB+8AQQD5UjLauGj73HutlmF2G+lS4MwJBRIaPCkLSeMjO1aD/AAINLTwCYkNNDWoPChHHz3jJXRSmOhIwyPweflO9Z6EulmW7MhxZj1vByQ6yUvxs/ceR5EfrjKFdQfIRekL2ixu3Fa23lKlwVxErZcCFN7ik7gfht/fVstOslOoBtOp5+k5ZGDHUpb0A/wC795TQ/CQoD1HSvcibrl1feM6t0/IH+tanxGyf8wSr8xUmyy3bkwHEkfBHkVEsZW9HX0PzX0UQrUki6Xe8Os2R9yJdobcWQ21lbpKNhDpUE4LhW2FK4wcn1zTqJN1HCuOnX4elbmqJYge5acjuEula1LcKlBPBO7Ax0AHXnPmU5f8AaFXftGjMoPVtm5OSFfRLIKfzIqPN8s8Aks/pa9yP9bNkrYZz8G21FR+qx8qkGgijW189KZmgywXC4g1J9vHv3qMvwDDLFuZt0+I026tzEwfaKUoJGOEjgBI+fPyqVu7k+43O0z2rDdEswYkaOoFpR39ykDIITgZA+OK4e0fV7exEK7OW9hC96GYqQhCT685J+pNKO6juF8t8qQ7MlRbrER3/AHzEhaESE5SFBSAcJWM5BTgHBBGcGraSChc0eZ3896hVhrQ+iJmpWZE/UrE2DJZhXqWJZb3Dvo7qVqUk5IAIG9aSCBkEdCKfTtTW+PqWBJt63J1ri2s21DRQWXQwptaFBROR3mXFKyMpzgdKgY+qrwtAYubybvFzyxPHfDHwUfGj5pUK9XuDDbTFuNsDqYE1Ki226rctlaCAtsq+9jIIVgZChnnNQMLQaOFPbKnjWgUhI44g8/6n9uvsW1Xez3BqLIcjWt9LqG1OpC3ML3nJAwMnA4BpW13Jybe2Lyy/OQ7GQUKefdC1rGfCgYAwAPmf3VX5LZVCOBkgg1Z9DOWND78G7w5D4VGUGDHWUuB0cjA6HPI54qMgAaXAY8/a0ui2MfODLi1uNNTu54b1qehrPY9W6dmzLvcH4MuG+pciaXfB3ZAIKwrI9QMYNXEamatdtVatMtu2u0FQU6+4MTJytxzuPVCSG3EgDn3emcVmthk93DZZX3aY0VZLUb3mwogKDij99Sso8R+6pQAGKcy5+HkOvPDghLRcONv3d59TlJJ/EkjjcMohpC9m60bTF5qK1A3BWy3SEqbbfkKTtPdgpB94ZjAkn478/U0/s7vevRV5GNzQyB1JUz/M1VLS85cSzIlpEe3peTtaP94neD19NiVJHr3Iqz2iQSWVL2NoZUyo/sqh7v3BZ+hqORxV7H3gl9LNKNqUgj7R6HCXn0C7c+mrV3HtK2FDPcKdaWRnlX20Rf8AB2oXSndonRIbxIcXAt7WAOhadVEX+W+rJb1IYtsR9KAVtRUqGefGmO2rH+aEsU1EARRStLjfrpT2TSGfZY0SU6MrYbZcB9A2mCtX/IlZ/ZNQ80mDIi2t1vv3G2e+nJxkLaZSpDrZ+YjA/Sp+WhDKpDRVva2LbyR91Iksf+Wtr8hVDVc1pk3G7yFF0qySFdC2kpLg+rbjx+hqx9B1iq46u6oUBMdel9osK2oBeEBxbzhJzuUyjbn5KLDR+aq0K2jv9W3WOlexqO0Iu/ySlKe5KvohK1/s1Qexxha7pdNQym++7gBtPPK+6AdX+ZQwj/iVbNFOqQL88/4tmW3lA5zhKt5/yJfPzUKoiFBVEhvGoT6I+443bipIYEqa60c9W0q8avyUcfJio7XcVq4XWba5A2R7tb3EcpBDawkkEDzUCSAP1gn0pdaVNWe0THjki5ZfUT+uFoIA+YkY/wAQpp2nPSYly09c2+5XJamhIU6cIDiicE/ALCl/JSatjPVCona1ziDkvlGYy6w+4w+2W3m1FDiFDBSoHBB+RBpKI0X5bLA5LjiUfmQKt/bFaWrL2hXWEwpSmVLS+0VnKilxIUCr0JznHlnFQ+hIvteroCFDwNuF5fwCAVfypxz7sZdoF88khLZjH30XO0RzvtYTgD4WilofspAoqIu0ky7pKlE5755a/wAyTRVsLLkbW6BLyOvPJVz7EHkP6lm6dfVhi+29+CQem8p3IP8AmT++qLIacYkOMupKHG1FC0nqCDginFjuD1qvEO5xyQ9FfQ8jnzSQf5Vau2aAxH1m5c4KR7BeGkXGMQOMODKh9FZqgdS0nRw9R+D6KztQ/wDyfQ/n3VJoooptUIooooQu5qWsl+lW1h2GptiZb3juehyUlTSz03DBBSr8SSD9KiKKi5ocKFda4tNQpx8aYlnvGF3G2LPJaWlMhsfJQKVY+YPzpjKjwGkEs3BT6vIBgp/eTTKiuNZTeul1dy7RRRU1FFOGZbrUR2M2EJS9jvFAeJQByE59MgHHwHpTeup61FdCVa27huB255x1xUvMuHtTEWIywGIsUKDaN24lSiCpaj5qOB5AAAAVEI606YHIqp4BVrSpW2hlbqESSEsk4cUeiR61J2JbKUpUllDbx8ClBWd+Cec+WfhXNFw/bLyw3jKU+JXHUCpHUkNFrv8AIZS0G0BQU0hIwnaRkY+uaRMrTIY99KrasLHNj2m6qew5jjSijKy4tW0EeRBJQfruUM4wCkA8GpmLH9sUh+eEOp8mE5Ccjb1PXkbE/DcjOduaqttkpVJQHHMhRKSk/EdPzSkftH4VaLV/pCWwVlDSsFbquu0Ekq/Lcr6H0qEgotqzvvHVWNh1ydJCCtKWxwtRGAcqCSrHl4lrX8N6qWgzlzZT7DQUA42tKEnqhSkODHzCnkj9ioq5SUwIfdup25TsKQeQfGlQP5yE/soNO9Nocg2x++yFD2shbraj7oWPtUZHxVHdT8yKXpULVZevUGe/uVuZnFep2S2cFxucEEHzcZbmNAftE4q7xHG1lWfC0JqxtPkgyMj/APXNz8qzVBTb7nb5jigfYlwHHSOmxC3Irn/KG/3Va7UmQpt+CpzLyW0tBWeN6W3I2f8A8kdj8xV8DsSnZ46tBrgPfkpxOlYtoW6oIV3ad2fMkRt37w7++spv9yUixvKRlKVJGU/s7iB825Dg/Yq467uSXmFx2FhpLjhLSv8AGVlH0/0pofSqQyhNzv8AbYRYUYqQJ7zZTnvGk5cbSD6ku9z+VcndUhqpFRWnNVftJQVac0ODIIL6EFbiT13p2urB/wCM5HR/wjSvZwhSbBKddyovArGf7xIOSD8VFDaP+KadaqZWzaVQnVl1aMtLUk8KUgqLy8/idW+fkyKjtKOuusXdTSw2iO03HZUPdCkpKQfopLjpPoyKnSgXBStAnCpJVoxbyVJPs85lYWoZAKVJAV8glCVf8b4037YQlWkY8tARtaktOArTkYyjGfhgtA/4F1x5LZ7PLyypBShLWQ0OoAKTt+e7ukfKOqvGvnv0n2Wh5St57hpeE8+Iq2p49NypJ+SBXYz1AqbQKvdRZp/SbhpF3st0bK1CRELa1rwCVpIWcj9Y95uV6Fe37tUHSA9is99vSuCzF9naP43Dj+Faz20Mm59kNnuLKQpEVxsqWMHCSCg5Uecb1HJ+84pzyRWValAtWhLRasFMictU58ee3ogH6fwq5xvNazU+mZ9F43pOPZ2t7+6vnh7qnZorlFaCwl0Gr62r+s3ZOWffuGmnStPqqI4ef8qv3VQasPZ7fU2DUrMqQnvITyTHmNnotlfCh9Ov0pe0sLmXm5txH1xFQroXAOo7I4Kv1ypzXFjVp7Ucm3hW9jPeRnPJxpXKFD6cfMGoOrmPD2hzciq3NLXFp3IoooqSiiu1yuihC7RRRQhFFFFCEV0VyugVFdSrfWnTHpTVHUU7YHNVvVjVqvYva+9Mm4OJyB9mnPT1NI9rJQ3cogQkBS0KBV54BFaD2bWtMDRUcEAOLRvPzPNQWs9G3nUdyimCwlKWdwcU4dvUjGP315iOcOtheThivYsgMdjDBngsyt7KVuNlDZ3lYGc9T5AfUAVfbctESAkhQWpCcDjggDP7wMfJ/wCFOXeyu9QYD0924MpLLZcDbbZ+7hQ5PTBSD9KgjEmrUlhJk944gKbbSnxFPHiCOCEgAeJW1OAOTWoZGy9kqdja6KppinFu23W7lyStZhsHLyvNSUjxkep2pWr44NWLUK3ZNslQuEIQ0pTiU9N4IU5j4bmXlj4LNVxi0XqEwgRXEoTtLuweMKRgpKiocFI3EbvdBUQFEk06stu1DcZJW8UPx2jucSVFs4OQAQAcZK1AYySVEJCiDiBboVoxvLW3SDU5q73RtMiNHQ+4hBnxC0UnCcLeZGPykRFf56W/rTCYhsXNcthtx5nv8JcBJUpCHeR5fbxljP8AtB60hA05HlKSidBIfBLfdbAohSeVICScEp80k9237zqlr8NSP6AtEaMFojtJOwuhSFJxtH94FuDG0eclwbfJpHQ0NqMVobQloaBzz7LPtRX5iTMWEl5cdoKDaw2RjG9LauccEIjkZ64+FWTskiSHZErUHcBTzz++M0eU5S5hlA/CqQvPyYNV3WZ/0lqBBbaW84tPct7FDJWQEqSlXiSFKKfG5lxYycJTxWs6LtrEG0MRm3Q20hAS06PJGFtIc+YQmW/81JNcZ1nVSwJqSTUBRGuJaYNiWiO6FghEWOtR5XnnefiUpWs//cil9ExixpJ1Pd94FpJcR5uZ27k/NWWGv+I78ap2uLg5d9TsQmGkpbYOEseXeOFOU/RPdtfsVpEBoM6c3JeUlKm9wc28pTsUpLmPUIU6/wD4nWR6UwTWqkHaqDt2HdNXmKp0OKWy4S7j3vAvK/kEl1fzkIqJ044i46CUwtRSpmGpxRHkdi22x9EIkOfNVWHTiMGYwGQh0tlvuvIEKADfy73u0H8MVdVTswdxZH46Sp7e+5uB6qQkJCB9QlI/49Qi7KJnASeI+ku1b29QdkjMCXtbDgaBWfu4VwMeR2pUEj7qA4s8uCvnjX92RedUy5TJ/wBGQruY4HQNo4Tj59frWt6xvpsHZMw0HgmbPcfajpScYSpWFu/MpA58gUAdKwU1fZBfeZNwwHz9cF4npy0NfIGN3AVRRRRWisJFFFFCFfYh/rjoX2H371YkFcf9Z+L5o+JT5fCqEafWG6S7Ndo9yhL2PML3D0I8wfgRxU/rm1xHmmdUWRGLZPP2jY/+We+82fQZ5H/tSjP2JLn9XZdx3jjmOKYd+6y9vGfhr8KpUUUU2l0V0VyuihC7RRRQhFFFFCEV6TXmvSaipJVvrUzpuIZ14ixcH7RwA/AedQ7dXvsogKlXdx9IGWkFKCRwFGlLXJs4nOTdji2szW9633RzZkPworC07kIKltk4CEDgKPxq/RojaEja2CrywOtZtpSJIgO7gVL7pe957oCFJyE/Lg/lWrWSS1OYYmjO108egryzACaL2EhIFUItJkNL77ACklOwc8H41lLWnGbbJkw+4QwGHCt1SglSl4PDhLnBPP8AavHYk52IJGa2q53eBarc7LkPNNNtJKlKcOAMVgn/AIkxNS63UI0RXsp8KZAI2d4n7wJBShQGftF52J3lIya0YIyw4DxUrFaAJbp3qyKgsISVR07NwEhxRWd6wBw7vd5wPJ90BKf7psnBp9a4UNtQfSAyEo7wBClMlKVDHeFS/Eyk5x3y8vudEBINJtNHvVO+JSOJCspAIPk8Q4Tt45D8gk49xApZh9bUlDrZOcGSkoVyM9XkF3p+KW8Pg2npTgFFruFcOefypBVuC1LaU2nvEobRt9n4Qj+7BZ8k5/so6uVqJccqtaqltW9lx15Z394XVfaJdKnUDkhSvC64j7zyvsmvdQkqq0QZjTMfDyktNd2p4FLimsoV760qX4m21DhcpzxrHCAM1jva9ekPuqjRVp2EJSAG+7G1I8HhPKEAH7Ns+6nC1eNYwPyoFVfMYJPPP41UNo9MjUGsBIQsNhDuWlkkhtxwlKVkq8SiB3jhUrk93k46DV9WXVqz6SW8wAyqWkNRW1HlCXEAJH7EVCB83zWZdkcdL7hjOhbbDiFuyXEjlLISA4R+It+AD1kU415fH71fXXCoBqOtSUpT0CicrI+AISkfhQmhoxKpY+7GHbyV40m0qdew48lx4qUpTuD43Co42j8Sido9CoGtlDiv0eC040tw7UoUeG3FlZIVjyQpxBX/ALmMnyNZX2cMjvEvrJQkBSnFp95CQDkj8QTuI/EWvWtOlIKmS07HASEqS4y0evuoW2k/E91ET8EumpnAK1grRQtsDYfW008plD7ewOL95LZbJLivimOVuH8cqqL2fuuKn3dLafY28qdUpZx3La8qyfTCTn5oTV03syrsWVulbcnvUyHWx1jtr3SnE/710JaR+FtI86yntq1BHskaZp23KSLpdXPaLutB/sUHlMcY8hnn4fOqAXGkbO0fTU8PeiX6YtDbLGJDnzz3cVn/AGoanGp9UOyY42W+OnuITeMANp88epPP5Dyqq0GitqKNsTAxuQXzp7zI4udmUUUUVNQRRRRQhFWHR19btjr0C4oMi0TRslM+notP4hVeoqEkbZGlrlJjyw1CmdV2NyyzkhDgkQnx3kWQn3XUHp9R5ioarJpy8xjBVYb2FOW105bWOVRl/rp+HqKjtQWeTZ5ncvFLjSxuZfRyh1PkQf5VVE9wOzkz9/zqrHsBF9mXso0V2uZozTCpXaKKKEIooorhQgV7TXgV7TXFIJVutt7GLUWbUmUtOC6d/Ty8v3VjNsjqlzWYyBlTqwkfU19M6fit2zT6BjbhAA+HFYXTUt2MRjet7oOG9I6Q7l5FyA1Qzby6oNyG1B1AOApCSDg/PP8AGldbdrabVMXadOQmXlMJ2yHlqKUNkfdAHUj8hxWXXq7ynNUPPR3A17OClKuu4Hz/AO//AFFckESX/Z45UGycurJ5WeuM/wDf8arsdkAYHP0WrPKXE01Uzeb/AH/WcxJu10fkxUqyEEhCEg8e7wMegUfPGeQa62q32tzchWFslJSUnDgwQccjxp49xxI9Ao007wsoEaONrv3lo6/u/l1/FxUbcEhoI5BUrkEenw8vyz8/IPOFRTcuQC67AY6r6M0tdU3WysT1OKUycvDepKiFgZWvLng3DILkhwK2qUEIHFEm+oL62FtEIyJSyR73o8Q9grPo/IKUD7iDxVB7ELqlUV6DIcUQytCkoCN6lc+DCT76gs/ZtDgrWVqyE1brm22zOW8ooQjct1CkupUGlpOHF945lOUkgKlLCyV5S0niqCSMF6Bj7zQ5eLzqB9DCnAlLJUr2rLiidvo8S4MrX5B50Yzw02etZBqaUZc4oQtW4rJWped2ScqJySc5JJySrJyrk4TYdZXB2RMbiQkrK3lBxG1KwpZPG8JV9oc5x3rn2i84QEg1a+zHQTcOam7XcsLeYWospex3SXW+VKX5d0x1VjhS9qBnkmbBvKRlJneWjIc8+aX09a16W0gpp0KYuUgbnipPMcJHeJbx6tpV3q/9oplHUVRZqO4cXHCdit5ChnISRxj445HxxWuarU2Gi44txnu8bS8PG2MF1O8f6z3pLg/WLCPhWRS17pv9mWkgnCDyU/D44xj44+NWLjqNIGiv/Z22WoyVIUlt3eVpcXyhvGVBSvgkoU6fhHbH3quUtSRES1HUYqlAIQtfWOA2TuV/uWFKWf8AaveoqvaNYxDbbbZQtRwkNqPgWcgBBP6qltgKP+rirP3q8a+1naNHWJ6fNBmTJSSzbYizhT7YVvU84OoDjnjV8AlI+FUr7tABUnIa8+ivfaI7NFtJDgFC601lF0PYJM1uKhF4uiUt2uIvkxojfDSlDyGfER95WPQ181TZL8yW7LlOrefeWVuOLOVKUTkk071HerjqC8yLtdZKpEp9W5aj0HoAPIDoBUdT9ks2xF52Ljn9DuC8H0l0g+3TF7sBuCKKKKbWeiiiihCKKKKEIooooQip+xXtpEQ2i8NGTbVnIx77Cv1kH+VQFFQfG14oVJjyw1CmL7Y3rclEplxMq3u8tSW/dPwPoaiMVKWK9yrWVthKX4rvD0d3lCx/I/GpCRZoV2bVL085lYGXILhw4j/CfvCqhI6PCTLX709lYWB+LPL6VcorriFtLU24hSFpOClQwQa5TCpRRRRXChdFe00mOtKo5NcKkFd+x+0i46raWseBgbvqeB/Otm7QZZtVlc7kZ2I4GevFQHY/oXUFkZVcJ8HY2+lLiS2sLwkjg8dR55GRyOa99uTjjEJAHCFqA+deXtzTNawDlgvV9HlsFjLhniVkMqc+FBexwZPKsjkmnNvWphhTjxIW57gI6Co11SCpKnCSB0SPM0oye9KS5u2g4SArn5CtwAXUlDK53WJU/EWlMY7kjbg5JxyPP+Xw5GeqVCIkOrlSFOHnniuTXnQyhKlJOePD5f8Aef3/ABNL6diPXK6RoEdJU4+4G0/Anz+nWqXimK17I8E0Kv3ZrCjwLS7fZAcTIdkJiw9q+6JB/tMLPuApyCscpSFY5q2XF1+5y4zEERluvpC4u5sNsuBsECStB/s4rKchtJ945WcnOa/q5bQuTNliNpVDtraYzbI6LV4d2f8AEotoPwLlW3QaY7lpeXvakz5H2j7slQwttONrj2OG4yBtKW+risDGABSgBJrqtSzS36tPPPOod6c05brbMMxsynJRCXDKUndICnOA7g9ZDucNN/3aSVnk5q0lxlDIShMNtpsFITncwjufFtJ+9HYPiWr+9dOOaabS0nugmStzdhR92Stbo5H4ZDw6/wCpZHkTQ04SkkLhgd2HAvbiNsaOAvH/ANIyeEjq85zzV4wTF0DLnnnVVrXcjbDWFqeOzxFb39oCr7XC/V1Rw+56YZbrPYjSnpje3cCpQ2hKSo8fDzx+/FaBqy3S7k4qLDC0NNJCpT0tYSIyVHfl1X+tUftnPQ90j7prN9Sdodo0w07A0WoT7mU7HLw6gbGuowwk/M+I/vqO0LnXIxV3oPE7vfuWRb7XHZzVxV31bq+3dndpaac7mXe3ox7q2jkMFaQNzp8glAS2B1OFn75NfOuor1cr/dnrpdpS5Mp45UtXkPIAeQHkB0ppMkyJkpyVKecffdUVuOOKKlLJ6kk9TSNP2ayiLrONXHf8DQcleRttvktbquyGQRXaKKbSK5RRRQhdorlFCEUUUUIRRXa5QhFFFFCEV7YddYdS6y4ptaTlKknBFeKKEKyN3yFdG0sagilxYGEzGQA6n/EOiqSl6bfU0ZNokN3ON1y1/aJ/xJ61AUtFlSIrwejPOMuDopCsGqNkWfxmndu/Cu2gd2xXv3rwtKkKKFpKVDggjBFcqfTqRMxIbvlvYnjp3o+zdH1HWum3afnc2+7qiLP91MTgf5hxRtS3ttp6jngubIO7Br6Kvil2EFxxLaRkqOB9alJOlr0ynvG4yZTfkuOsLB/LmjTcGT/WKEw7GdQou8pWgjyPrQZmFpc01opNidfDSM19U9i+qL3FtkeFPU1corDSUJ79H2gSAAAFjnoAOc0r2yPaM1HaXDdGXITrAz3vKTnH6yQQeefEPypvo2OiFai7wEhOd3lVH1neGrrpe5TtqkNNl1sgjqU8VgQ2mSuOIqvTSWSKhIwNFiTpbDriEHejcQgnzGeKcsFKWypQG7y/6VFpcIOfy4p80sqTvVxs5I/hW1doseyvwK5JWou7Vr5Txz61oPZDBQyu46jktIW3aY5UhJ+86oHb/wBP2hWbshTz4HUk5NbNbLRMhaHttqgRpCpkxXtszaMhPTYk+Qx4Tj8Bpe0Oa0Ymi2bMcCVDyVFbysry44Vd44FAE8HecnjJ3OEfF5HpVr7N700i7uQlvll9xwOIjLSoutuD3dkdQPeLAOEDcUJJKiBiohUGFbIqjqK8W23BaQlSC6FO7cZOG+QrxbQUkEENiq+9rjRlilNSbNCuN6nMIKGXJLymIzW4YVsQCVYIz4Txg0o1xkP7YJ8MvM4K82+KzuvOPBbw20uQ26tMZTwb3tKaad3AlXK2g795Sjy+/wCngTVS1n2laX0s53bk5F8ujakurYhpSG1PJGEBauUpbb6IbGcYyQSeMJ1b2kar1Gz7JJn+yQAMJhw09y0B6YHJ+pNVCmmWGR+MrqDQff1TxWdbP/Qvf1YRQaq3a97Q9RavdWibIEaCVlaYcfKW8k53K81q88qzVR61yitGOJkTbrBQLzz5HSOvONSiiiirFBFFFFCEUUUUIRRRRQhFFFFCEUUUUIRRRRQhFFFFCF2uCiihC6a5RRQhLRpUmMrdHfdZPqhZT/CpmLq/UEcj/Ti6B0DqAr+WaKKqkjY8dYAqyORzTgaK1ae19qF5ssLebDZ4KU7gMfLdirRby3KtX6NcYbEN5RLjKchJJ5J6560UV5y1i4ergt2B7nDEpM6W06hJV+iWFbemSr/rURdVQLbuXHslsJx99pSv/wCqKKWimkc6hcTxVrmNaOqKKtO6+vcZxTcFi2Qtp4LENIP5nNRdz1bqW4jEu9zVp/VS4UJ/JOBRRXpLNBFdvXRXwWHPK+tLxooRSlKUVKJJPUnrXmiinUqiiiihC75VyiihCKKKKELoFcoooQiiiihC6BRRRQhf/9k=">Moon's Boutique<span class="sub">Inventory · Sales · Purchasing</span></div>
@@ -436,7 +448,8 @@
       <button class="btn" id="btnAddItem">+ Add item</button>
     </div>
     <div class="filters">
-      <label>Search<input type="text" id="invSearch" placeholder="Name, category, wholesaler…"></label>
+      <label>Search<input type="text" id="invSearch" placeholder="Name, color, wholesaler…"></label>
+      <label>Category<select id="invCategoryFilter"><option value="">All categories</option></select></label>
       <label>Sort<select id="invSort">
         <option value="name">Name</option>
         <option value="stock-asc">Stock: low to high</option>
@@ -511,6 +524,7 @@
       <button data-report="purchases">Purchases</button>
       <button data-report="pnl">Profit &amp; Loss</button>
       <button data-report="ledger">Stock In &amp; Out</button>
+      <button data-report="customers">Customers</button>
     </div>
     <div id="reportRangeRow" class="filters"></div>
     <div id="reportBody"></div>
@@ -525,6 +539,8 @@
   <div class="modal" id="miniBox" style="max-width:380px;"></div>
 </div>
 <datalist id="wholesalerList"></datalist>
+<datalist id="customerList"></datalist>
+<datalist id="categoryList"></datalist>
 
 <div class="toast-wrap" id="toastWrap"></div>
 
@@ -535,11 +551,12 @@
 /* ---------------- constants ---------------- */
 var DEFAULT_CATEGORIES = ["Banarasi","Kanjivaram","Silk","Cotton","Georgette","Chiffon","Chikankari","Linen","Tussar","Organza","Patola","Other"];
 var CHANNELS = ["Exhibition","In-house Store","Online"];
+var PAYMENT_METHODS = ["Cash","UPI","Card","Bank transfer","Other"];
 
 /* ---------------- state ---------------- */
 var state = {
   inventory: [], purchases: [], sales: [], stockLog: [],
-  categories: [], wholesalers: [], business: {},
+  categories: [], wholesalers: [], customers: [], business: {}, members: [],
   dbReady:false, dbOffline:false
 };
 var db = null;
@@ -629,41 +646,72 @@ var unsubscribers = [];
 
 /* Wraps Firestore so the rest of the app can keep using the same
    db.collection(name) / db.doc("a/b") calls as before — every read/write
-   is transparently scoped under users/{uid}/... so each account only
-   ever sees its own data. */
-function makeDbShim(uidVal){
-  var root = firestore.collection("users").doc(uidVal);
+   is transparently scoped under businesses/main/... which is the ONE
+   shared dataset every authorized team member reads and writes. */
+var BUSINESS_ROOT_PATH = "businesses/main";
+function makeDbShim(){
+  var parts = BUSINESS_ROOT_PATH.split("/");
+  var root = firestore;
+  for(var i=0;i<parts.length;i++){ root = (i%2===0) ? root.collection(parts[i]) : root.doc(parts[i]); }
   return {
     collection: function(name){ return root.collection(name); },
     doc: function(path){
-      var parts = path.split("/");
+      var p = path.split("/");
       var ref = root;
-      for(var i=0;i<parts.length;i++){ ref = (i%2===0) ? ref.collection(parts[i]) : ref.doc(parts[i]); }
+      for(var j=0;j<p.length;j++){ ref = (j%2===0) ? ref.collection(p[j]) : ref.doc(p[j]); }
       return ref;
     }
   };
 }
+function memberDocRef(email){
+  return firestore.doc(BUSINESS_ROOT_PATH+"/members/"+(email||"").toLowerCase());
+}
+
+var currentMemberRole = null; // 'owner' | 'member' | null
 
 auth.onAuthStateChanged(function(user){
   unsubscribers.forEach(function(u){ try{ u(); }catch(e){} });
   unsubscribers = [];
+  $("#accessScreen").classList.add("hidden");
   if(user){
-    db = makeDbShim(user.uid);
-    state.dbOffline = false;
-    $("#loginScreen").classList.add("hidden");
-    setSyncStatus(true, "Synced");
-    subscribeAll();
+    db = makeDbShim();
+    setSyncStatus(true, "Checking access…");
+    memberDocRef(user.email).get().then(function(snap){
+      if(snap.exists){
+        currentMemberRole = snap.data().role || "member";
+        state.dbOffline = false;
+        $("#loginScreen").classList.add("hidden");
+        setSyncStatus(true, "Synced");
+        subscribeAll();
+      } else {
+        currentMemberRole = null;
+        state.dbOffline = true;
+        setSyncStatus(false, "No access");
+        $("#loginScreen").classList.add("hidden");
+        $("#accessEmail").textContent = user.email;
+        $("#accessScreen").classList.remove("hidden");
+      }
+    }).catch(function(err){
+      console.error(err);
+      state.dbOffline = true;
+      setSyncStatus(false, "Error");
+      $("#loginScreen").classList.add("hidden");
+      $("#accessEmail").textContent = user.email;
+      $("#accessScreen").classList.remove("hidden");
+    });
   } else {
     db = null;
+    currentMemberRole = null;
     state.dbOffline = true;
     state.inventory = []; state.purchases = []; state.sales = []; state.stockLog = [];
-    state.categories = []; state.wholesalers = []; state.business = {};
+    state.categories = []; state.wholesalers = []; state.customers = []; state.business = {}; state.members = [];
     categoriesSeeded = false;
     $("#loginScreen").classList.remove("hidden");
     setSyncStatus(false, "Not signed in");
     renderAll();
   }
 });
+$("#accessSignOut").addEventListener("click", function(){ auth.signOut(); });
 
 function setSyncStatus(ok, text){
   $("#syncDot").className = "sync-dot" + (ok?"":" off");
@@ -736,6 +784,12 @@ function firebaseErrorMessage(e){
 }
 
 function subscribeAll(){
+  unsubscribers.push(db.collection("members").onSnapshot(function(snap){
+    state.members = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    state.members.sort(function(a,b){ return (a.id||"").localeCompare(b.id||""); });
+    if(currentDrawerView==="access") renderDrawer();
+  }, function(err){ console.error(err); }));
+
   unsubscribers.push(db.collection("inventory").onSnapshot(function(snap){
     state.inventory = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
     state.inventory.sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
@@ -764,6 +818,7 @@ function subscribeAll(){
       categoriesSeeded = true;
       seedDefaultCategories();
     }
+    renderCategoryDatalist();
     renderAll();
   }, function(err){ console.error(err); }));
 
@@ -772,6 +827,13 @@ function subscribeAll(){
     state.wholesalers.sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
     renderWholesalerDatalist();
     if(currentDrawerView==="wholesalers") renderDrawer();
+  }, function(err){ console.error(err); }));
+
+  unsubscribers.push(db.collection("customers").onSnapshot(function(snap){
+    state.customers = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    state.customers.sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
+    renderCustomerDatalist();
+    if(currentDrawerView==="customers") renderDrawer();
   }, function(err){ console.error(err); }));
 
   unsubscribers.push(db.doc("settings/business").onSnapshot(function(snap){
@@ -863,6 +925,25 @@ async function deletePurchase(p){
   await db.doc("purchases/"+p.id).delete();
   toast("Purchase deleted and stock reversed.", "success");
 }
+async function updatePurchase(purchase, data){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+  var item = findItem(purchase.itemId);
+  if(!item) return;
+  var qtyDelta = data.qty - purchase.qty;
+  var newStock = Math.max(0, (item.stock||0) + qtyDelta);
+  var itemUpdates = {stock:newStock};
+  if(data.updateCost) itemUpdates.costPrice = data.unitCost;
+  await db.doc("inventory/"+item.id).update(itemUpdates);
+  await db.doc("purchases/"+purchase.id).update({
+    date:data.date, wholesaler:data.wholesaler, qty:data.qty, unitCost:data.unitCost,
+    totalCost:data.qty*data.unitCost, notes:data.notes||""
+  });
+  var logEntry = state.stockLog.find(function(l){ return l.refType==="purchase" && l.refId===purchase.id; });
+  if(logEntry){
+    await db.doc("stockLog/"+logEntry.id).update({date:data.date, qty:data.qty, detail:data.wholesaler});
+  }
+  toast("Purchase updated.", "success");
+}
 
 async function recordSale(data){
   if(state.dbOffline){ toast("Please log in first.", "error"); return; }
@@ -871,10 +952,13 @@ async function recordSale(data){
   var newStock = (item.stock||0) - data.qty;
   if(newStock < 0) newStock = 0;
   await db.doc("inventory/"+item.id).update({stock:newStock});
-  var total = data.qty*data.unitPrice - (data.discount||0);
+  var total = data.qty*data.unitPrice;
+  var discount = Math.max(0, data.qty*((data.listPrice||data.unitPrice)-data.unitPrice));
   var sRef = await db.collection("sales").add({
     date:data.date, channel:data.channel, itemId:item.id, itemName:item.name,
-    qty:data.qty, unitPrice:data.unitPrice, discount:data.discount||0, totalPrice:total,
+    category:item.category||"", wholesaler:item.wholesaler||"", paymentMethod:data.paymentMethod||"Cash",
+    qty:data.qty, listPriceAtSale:data.listPrice||data.unitPrice, unitPrice:data.unitPrice,
+    discount:discount, totalPrice:total,
     costPriceAtSale: item.costPrice||0, customer:data.customer||"", notes:data.notes||"",
     createdAt: nowIso()
   });
@@ -882,7 +966,29 @@ async function recordSale(data){
     date:data.date, type:"out", itemId:item.id, itemName:item.name, qty:data.qty,
     reason:"Sale", detail:data.channel, refType:"sale", refId:sRef.id, createdAt: nowIso()
   });
+  if(data.customer && data.customer.trim()) addCustomerQuick(data.customer.trim());
   toast("Sale recorded.", "success");
+}
+async function updateSale(sale, data){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+  var item = findItem(sale.itemId);
+  if(!item) return;
+  var qtyDelta = sale.qty - data.qty; // stock given back if fewer sold now
+  var newStock = Math.max(0, (item.stock||0) + qtyDelta);
+  await db.doc("inventory/"+item.id).update({stock:newStock});
+  var total = data.qty*data.unitPrice;
+  var discount = Math.max(0, data.qty*((data.listPrice||data.unitPrice)-data.unitPrice));
+  await db.doc("sales/"+sale.id).update({
+    date:data.date, channel:data.channel, qty:data.qty, paymentMethod:data.paymentMethod||"Cash",
+    listPriceAtSale:data.listPrice||data.unitPrice, unitPrice:data.unitPrice, discount:discount,
+    totalPrice:total, customer:data.customer||"", notes:data.notes||""
+  });
+  var logEntry = state.stockLog.find(function(l){ return l.refType==="sale" && l.refId===sale.id; });
+  if(logEntry){
+    await db.doc("stockLog/"+logEntry.id).update({date:data.date, qty:data.qty, detail:data.channel});
+  }
+  if(data.customer && data.customer.trim()) addCustomerQuick(data.customer.trim());
+  toast("Sale updated.", "success");
 }
 async function deleteSale(s){
   if(state.dbOffline) return;
@@ -1055,12 +1161,14 @@ $("#drawerOverlay").addEventListener("click", function(e){
 });
 
 function renderDrawer(){
-  var titles = {home:"Menu", business:"Business details", categories:"Manage categories", wholesalers:"Manage wholesalers"};
+  var titles = {home:"Menu", business:"Business details", categories:"Manage categories", wholesalers:"Manage wholesalers", customers:"Manage customers", access:"Manage access"};
   $("#drawerTitle").textContent = titles[currentDrawerView] || "Menu";
   if(currentDrawerView==="home") return renderDrawerHome();
   if(currentDrawerView==="business") return renderDrawerBusiness();
   if(currentDrawerView==="categories") return renderDrawerCategories();
   if(currentDrawerView==="wholesalers") return renderDrawerWholesalers();
+  if(currentDrawerView==="customers") return renderDrawerCustomers();
+  if(currentDrawerView==="access") return renderDrawerAccess();
 }
 function backButtonHtml(){
   return '<button class="drawer-back" id="drawerBack" type="button">‹ Back to menu</button>';
@@ -1077,6 +1185,8 @@ function renderDrawerHome(){
       '<button class="drawer-nav-btn" data-nav="business">Business details<span class="arrow">›</span></button>'+
       '<button class="drawer-nav-btn" data-nav="categories">Manage categories<span class="arrow">›</span></button>'+
       '<button class="drawer-nav-btn" data-nav="wholesalers">Manage wholesalers<span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" data-nav="customers">Manage customers<span class="arrow">›</span></button>'+
+      (currentMemberRole==="owner" ? '<button class="drawer-nav-btn" data-nav="access">Manage access<span class="arrow">›</span></button>' : '')+
     '</div>'+
     '<div class="drawer-section">'+
       '<h4>Data</h4>'+
@@ -1085,7 +1195,7 @@ function renderDrawerHome(){
     '</div>'+
     '<div class="drawer-section">'+
       '<h4>Account</h4>'+
-      '<p class="desc">Signed in as '+escapeHtml(email)+'</p>'+
+      '<p class="desc">Signed in as '+escapeHtml(email)+(currentMemberRole==="owner"?' (Owner)':'')+'</p>'+
       '<button class="drawer-nav-btn" id="btnDrawerLogout" type="button">Log out<span class="arrow">›</span></button>'+
     '</div>'+
     '<div class="drawer-section"><p class="desc">More reports and CSV exports live under the Reports tab.</p></div>';
@@ -1222,6 +1332,93 @@ function renderDrawerWholesalers(){
   });
 }
 
+function renderDrawerCustomers(){
+  var rows = state.customers.map(function(c){
+    var visits = state.sales.filter(function(s){return (s.customer||"").toLowerCase()===c.name.toLowerCase();}).length;
+    return '<div class="chip-row"><span>'+escapeHtml(c.name)+(visits?' <span class="muted">('+visits+' sale'+(visits===1?'':'s')+')</span>':'')+'</span>'+
+      '<div class="chip-actions">'+
+        '<button data-rename="'+c.id+'" title="Rename">Rename</button>'+
+        '<button data-del="'+c.id+'" title="Delete">Delete</button>'+
+      '</div></div>';
+  }).join("");
+  $("#drawerBody").innerHTML = backButtonHtml() +
+    '<div class="drawer-section">'+
+      '<h4>Customers</h4>'+
+      '<p class="desc">Save regular customers here — they\'ll show up as suggestions when you type a customer name on a sale. See spending totals under Reports → Customers.</p>'+
+      '<div class="chip-list">'+(rows || '<span class="hint">No customers saved yet.</span>')+'</div>'+
+      '<div class="add-inline"><input id="newCustomerInput" placeholder="Customer name"><button class="btn small" id="newCustomerBtn">Add</button></div>'+
+    '</div>';
+  wireBack();
+  $("#newCustomerBtn").addEventListener("click", async function(){
+    var val = $("#newCustomerInput").value.trim();
+    if(!val){ return; }
+    if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+    await addCustomerQuick(val);
+    $("#newCustomerInput").value = "";
+    toast("Customer added.", "success");
+  });
+  $all("[data-rename]", $("#drawerBody")).forEach(function(b){
+    b.addEventListener("click", async function(){
+      var c = state.customers.filter(function(x){return x.id===b.dataset.rename;})[0];
+      if(!c) return;
+      var name = await appPrompt("Rename customer:", c.name);
+      if(!name || !name.trim() || name.trim()===c.name) return;
+      await db.doc("customers/"+c.id).update({name:name.trim()});
+      toast("Customer renamed.", "success");
+    });
+  });
+  $all("[data-del]", $("#drawerBody")).forEach(function(b){
+    b.addEventListener("click", async function(){
+      var c = state.customers.filter(function(x){return x.id===b.dataset.del;})[0];
+      if(!c) return;
+      if(!(await appConfirm('Remove "'+c.name+'" from your saved customers?', {title:"Remove customer?", confirmLabel:"Remove", danger:true}))) return;
+      await db.doc("customers/"+c.id).delete();
+      toast("Customer removed.", "success");
+    });
+  });
+}
+
+function renderDrawerAccess(){
+  var myEmail = ((auth.currentUser && auth.currentUser.email) || "").toLowerCase();
+  var rows = state.members.map(function(m){
+    var isSelf = m.id===myEmail;
+    var isOwnerRow = m.role==="owner";
+    return '<div class="chip-row"><span>'+escapeHtml(m.id)+
+        (isOwnerRow ? ' <span class="muted">(Owner)</span>' : '')+
+        (isSelf ? ' <span class="muted">(You)</span>' : '')+
+      '</span>'+
+      (isSelf ? '' : '<div class="chip-actions"><button data-remove="'+escapeHtml(m.id)+'" title="Remove">Remove</button></div>')+
+      '</div>';
+  }).join("");
+  $("#drawerBody").innerHTML = backButtonHtml() +
+    '<div class="drawer-section">'+
+      '<h4>Who has access</h4>'+
+      '<p class="desc">Only people listed here can log in and see this business\'s data. Add someone by their email — they can then sign up (or log in, if they already have an account) using that exact email.</p>'+
+      '<div class="chip-list">'+(rows || '<span class="hint">No one yet — that shouldn\'t happen, you\'re signed in!</span>')+'</div>'+
+      '<div class="add-inline"><input id="newAccessInput" type="email" placeholder="teammate@email.com"><button class="btn small" id="newAccessBtn">Grant access</button></div>'+
+    '</div>';
+  wireBack();
+  $("#newAccessBtn").addEventListener("click", async function(){
+    var val = $("#newAccessInput").value.trim().toLowerCase();
+    if(!val){ return; }
+    if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)){ toast("Enter a valid email address.", "error"); return; }
+    var exists = state.members.filter(function(m){return m.id===val;})[0];
+    if(exists){ toast("That email already has access.", "error"); return; }
+    await db.collection("members").doc(val).set({role:"member", addedAt: nowIso(), addedBy: myEmail});
+    $("#newAccessInput").value = "";
+    toast("Access granted to "+val+".", "success");
+  });
+  $all("[data-remove]", $("#drawerBody")).forEach(function(b){
+    b.addEventListener("click", async function(){
+      var email = b.dataset.remove;
+      if(!(await appConfirm('Remove access for "'+email+'"? They\'ll be signed out of your business data immediately.', {title:"Remove access?", confirmLabel:"Remove", danger:true}))) return;
+      await db.doc("members/"+email).delete();
+      toast("Access removed.", "success");
+    });
+  });
+}
+
 async function deleteAllData(){
   if(state.dbOffline){ toast("Please log in first.", "error"); return; }
   var total = state.inventory.length + state.purchases.length + state.sales.length + state.stockLog.length;
@@ -1338,10 +1535,29 @@ function itemOptions(selectedId){
     return '<option value="'+i.id+'"'+(i.id===selectedId?' selected':'')+'>'+escapeHtml(i.name)+' — stock '+fmtNum(i.stock)+'</option>';
   }).join("");
 }
-function categoryOptions(selected){
-  var list = state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES;
-  if(selected && list.indexOf(selected)<0) list = list.concat([selected]);
-  return list.map(function(c){return '<option'+(c===selected?' selected':'')+'>'+escapeHtml(c)+'</option>';}).join("");
+function itemChoices(){
+  return state.inventory.map(function(i){ return {value:i.id, label:i.name+" — stock "+fmtNum(i.stock)}; });
+}
+/* Searchable dropdown for pickers that need a real id behind the scenes
+   (like choosing an inventory item) — a text input filtered via a native
+   datalist, backed by a hidden field holding the actual value. */
+function searchableSelectHtml(fieldId, choices, selectedValue, placeholder){
+  var selectedLabel = "";
+  choices.forEach(function(c){ if(c.value===selectedValue) selectedLabel = c.label; });
+  return '<input type="text" id="'+fieldId+'_q" list="'+fieldId+'_dl" autocomplete="off" placeholder="'+escapeHtml(placeholder||"Type to search…")+'" value="'+escapeHtml(selectedLabel)+'">'+
+    '<datalist id="'+fieldId+'_dl">'+choices.map(function(c){return '<option value="'+escapeHtml(c.label)+'">';}).join("")+'</datalist>'+
+    '<input type="hidden" id="'+fieldId+'" value="'+escapeHtml(selectedValue||"")+'">';
+}
+function wireSearchableSelect(fieldId, choices, onChange){
+  var q = document.getElementById(fieldId+"_q");
+  var hidden = document.getElementById(fieldId);
+  function sync(){
+    var match = choices.filter(function(c){ return c.label===q.value; })[0];
+    hidden.value = match ? match.value : "";
+    if(onChange) onChange(hidden.value, match);
+  }
+  q.addEventListener("input", sync);
+  q.addEventListener("change", sync);
 }
 async function addCategoryQuick(name){
   name = (name||"").trim();
@@ -1351,10 +1567,29 @@ async function addCategoryQuick(name){
   await db.collection("categories").add({name:name, createdAt: nowIso()});
   return name;
 }
+async function addCustomerQuick(name){
+  name = (name||"").trim();
+  if(!name) return null;
+  var exists = state.customers.filter(function(c){return c.name.toLowerCase()===name.toLowerCase();})[0];
+  if(exists) return exists.name;
+  await db.collection("customers").add({name:name, createdAt: nowIso()});
+  return name;
+}
+function renderCategoryDatalist(){
+  var el = document.getElementById("categoryList");
+  if(!el) return;
+  var list = state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES;
+  el.innerHTML = list.map(function(c){ return '<option value="'+escapeHtml(c)+'">'; }).join("");
+}
 function renderWholesalerDatalist(){
   var el = document.getElementById("wholesalerList");
   if(!el) return;
   el.innerHTML = state.wholesalers.map(function(w){ return '<option value="'+escapeHtml(w.name)+'">'; }).join("");
+}
+function renderCustomerDatalist(){
+  var el = document.getElementById("customerList");
+  if(!el) return;
+  el.innerHTML = state.customers.map(function(c){ return '<option value="'+escapeHtml(c.name)+'">'; }).join("");
 }
 
 /* ---- add / edit item modal ---- */
@@ -1375,7 +1610,7 @@ function openItemModal(existing){
         '</div>'+
       '</div>'+
       '<div class="field"><label>Name</label><input id="f_name" value="'+escapeHtml(it.name||"")+'" placeholder="e.g. Red Banarasi Silk"></div>'+
-      '<div class="field"><label>Category</label><select id="f_category">'+categoryOptions(it.category)+'<option value="__new__">+ Add new category…</option></select></div>'+
+      '<div class="field"><label>Category</label><input id="f_category" list="categoryList" value="'+escapeHtml(it.category||"")+'" placeholder="Type to search or add new"></div>'+
       '<div class="field"><label>Color</label><input id="f_color" value="'+escapeHtml(it.color||"")+'" placeholder="e.g. Maroon"></div>'+
       '<div class="field"><label>Wholesaler / source</label><input id="f_wholesaler" list="wholesalerList" value="'+escapeHtml(it.wholesaler||"")+'" placeholder="Supplier name"></div>'+
       '<div class="field"><label>Cost price (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+(it.costPrice!==undefined?it.costPrice:"")+'"></div>'+
@@ -1392,16 +1627,6 @@ function openItemModal(existing){
     '</div>'
   );
   $("#f_cancel").addEventListener("click", closeModal);
-  $("#f_category").addEventListener("change", async function(){
-    if(this.value!=="__new__") return;
-    var name = await appPrompt("New category name:");
-    if(!name || !name.trim()){ this.value = it.category || DEFAULT_CATEGORIES[0]; return; }
-    var added = await addCategoryQuick(name);
-    var newOpt = document.createElement("option");
-    newOpt.textContent = added;
-    this.insertBefore(newOpt, this.lastElementChild);
-    this.value = added;
-  });
   $("#f_photo").addEventListener("change", async function(e){
     var file = e.target.files[0];
     if(!file) return;
@@ -1440,8 +1665,10 @@ function openItemModal(existing){
   $("#f_save").addEventListener("click", async function(){
     var name = $("#f_name").value.trim();
     if(!name){ toast("Item name is required.", "error"); return; }
+    var categoryVal = $("#f_category").value.trim();
+    if(categoryVal) addCategoryQuick(categoryVal);
     var data = {
-      name:name, category:$("#f_category").value, color:$("#f_color").value.trim(),
+      name:name, category:categoryVal, color:$("#f_color").value.trim(),
       wholesaler:$("#f_wholesaler").value.trim(), costPrice:Number($("#f_cost").value)||0,
       sellingPrice:Number($("#f_price").value)||0, stock:Number($("#f_stock").value)||0,
       reorderLevel:Number($("#f_reorder").value)||0, sku:$("#f_sku").value.trim()||genSku(name),
@@ -1453,24 +1680,27 @@ function openItemModal(existing){
 }
 
 /* ---- purchase modal ---- */
-function openPurchaseModal(){
+function openPurchaseModal(existingPurchase){
+  var isEdit = !!existingPurchase;
   var hasItems = state.inventory.length>0;
-  var mode = hasItems ? "existing" : "new";
+  var mode = isEdit ? "existing" : (hasItems ? "existing" : "new");
+  var editItem = isEdit ? findItem(existingPurchase.itemId) : null;
   openModal(
-    '<h3>Record purchase</h3>'+
+    '<h3>'+(isEdit?'Edit purchase':'Record purchase')+'</h3>'+
+    (isEdit ? '<p class="hint" style="margin:-4px 0 10px 0;">Item: <strong>'+escapeHtml(existingPurchase.itemName)+'</strong> (can\'t be changed — delete and re-add if it was the wrong item)</p>' :
     '<div class="report-tabs" id="purModeToggle" style="margin-bottom:4px;">'+
       '<button type="button" data-mode="existing"'+(!hasItems?' disabled style="opacity:0.4;cursor:not-allowed;"':'')+' class="'+(mode==="existing"?"active":"")+'">Existing item</button>'+
       '<button type="button" data-mode="new" class="'+(mode==="new"?"active":"")+'">New item</button>'+
-    '</div>'+
+    '</div>')+
     '<div class="form-grid">'+
       '<div class="field full" id="grpExisting" style="'+(mode==="existing"?"":"display:none;")+'">'+
-        '<label>Item</label><select id="f_item">'+itemOptions()+'</select>'+
+        '<label>Item</label>'+searchableSelectHtml("f_item", itemChoices(), isEdit?existingPurchase.itemId:"", "Type an item name…")+
       '</div>'+
       '<div class="field" id="grpNewName" style="'+(mode==="new"?"":"display:none;")+'">'+
         '<label>Saree name</label><input id="f_newname" placeholder="e.g. Red Banarasi Silk">'+
       '</div>'+
       '<div class="field" id="grpNewCategory" style="'+(mode==="new"?"":"display:none;")+'">'+
-        '<label>Category</label><select id="f_newcategory">'+categoryOptions()+'<option value="__new__">+ Add new category…</option></select>'+
+        '<label>Category</label><input id="f_newcategory" list="categoryList" placeholder="Type to search or add new">'+
       '</div>'+
       '<div class="field" id="grpNewColor" style="'+(mode==="new"?"":"display:none;")+'">'+
         '<label>Color</label><input id="f_newcolor" placeholder="e.g. Maroon">'+
@@ -1481,54 +1711,46 @@ function openPurchaseModal(){
       '<div class="field" id="grpNewReorder" style="'+(mode==="new"?"":"display:none;")+'">'+
         '<label>Reorder level</label><input id="f_newreorder" type="number" min="0" step="1" value="2">'+
       '</div>'+
-      '<div class="field"><label>Wholesaler</label><input id="f_wholesaler" list="wholesalerList" placeholder="Supplier name"></div>'+
-      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+todayStr()+'"></div>'+
-      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="1"></div>'+
-      '<div class="field"><label>Unit cost (₹)</label><input id="f_cost" type="number" min="0" step="1"></div>'+
-      '<div class="field full" id="grpUpdateCost" style="'+(mode==="new"?"display:none;":"")+'"><label><input type="checkbox" id="f_updatecost" checked style="width:auto;display:inline-block;margin-right:6px;">Update this item\'s cost price to match</label></div>'+
-      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>'+
+      '<div class="field"><label>Wholesaler</label><input id="f_wholesaler" list="wholesalerList" value="'+escapeHtml(isEdit?(existingPurchase.wholesaler||""):"")+'" placeholder="Supplier name"></div>'+
+      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingPurchase.date:todayStr())+'"></div>'+
+      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingPurchase.qty:1)+'"></div>'+
+      '<div class="field"><label>Unit cost (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+(isEdit?existingPurchase.unitCost:"")+'"></div>'+
+      '<div class="field full" id="grpUpdateCost" style="'+(mode==="new"?"display:none;":"")+'"><label><input type="checkbox" id="f_updatecost"'+(isEdit?"":" checked")+' style="width:auto;display:inline-block;margin-right:6px;">Update this item\'s cost price to match</label></div>'+
+      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(isEdit?(existingPurchase.notes||""):"")+'</textarea></div>'+
     '</div>'+
     '<div class="modal-actions">'+
       '<button class="btn ghost" id="f_cancel">Cancel</button>'+
-      '<button class="btn" id="f_save">Record purchase</button>'+
+      '<button class="btn" id="f_save">'+(isEdit?'Save changes':'Record purchase')+'</button>'+
     '</div>'
   );
   var wField = $("#f_wholesaler");
 
-  function setMode(m){
-    mode = m;
-    $all("#purModeToggle button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode===m); });
-    $("#grpExisting").style.display = m==="existing" ? "" : "none";
-    ["grpNewName","grpNewCategory","grpNewColor","grpNewPrice","grpNewReorder"].forEach(function(id){
-      $("#"+id).style.display = m==="new" ? "" : "none";
+  if(!isEdit){
+    function setMode(m){
+      mode = m;
+      $all("#purModeToggle button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode===m); });
+      $("#grpExisting").style.display = m==="existing" ? "" : "none";
+      ["grpNewName","grpNewCategory","grpNewColor","grpNewPrice","grpNewReorder"].forEach(function(id){
+        $("#"+id).style.display = m==="new" ? "" : "none";
+      });
+      $("#grpUpdateCost").style.display = m==="new" ? "none" : "";
+    }
+    $all("#purModeToggle button").forEach(function(b){
+      b.addEventListener("click", function(){
+        if(b.dataset.mode==="existing" && !hasItems) return;
+        setMode(b.dataset.mode);
+      });
     });
-    $("#grpUpdateCost").style.display = m==="new" ? "none" : "";
   }
-  $all("#purModeToggle button").forEach(function(b){
-    b.addEventListener("click", function(){
-      if(b.dataset.mode==="existing" && !hasItems) return;
-      setMode(b.dataset.mode);
+
+  if(!isEdit){
+    wireSearchableSelect("f_item", itemChoices(), function(itemId){
+      var it = findItem(itemId);
+      if(it && it.wholesaler && !wField.value) wField.value = it.wholesaler;
+      if(it) $("#f_cost").value = it.costPrice||"";
     });
-  });
-
-  $("#f_item").addEventListener("change", function(){
-    var it = findItem(this.value);
-    if(it && it.wholesaler && !wField.value) wField.value = it.wholesaler;
-    if(it) $("#f_cost").value = it.costPrice||"";
-  });
-  var firstItem = findItem($("#f_item").value);
-  if(hasItems && firstItem){ wField.value = firstItem.wholesaler||""; $("#f_cost").value = firstItem.costPrice||""; }
-
-  $("#f_newcategory").addEventListener("change", async function(){
-    if(this.value!=="__new__") return;
-    var name = await appPrompt("New category name:");
-    if(!name || !name.trim()){ this.value = DEFAULT_CATEGORIES[0]; return; }
-    var added = await addCategoryQuick(name);
-    var newOpt = document.createElement("option");
-    newOpt.textContent = added;
-    this.insertBefore(newOpt, this.lastElementChild);
-    this.value = added;
-  });
+  }
+  if(isEdit && editItem){ $("#f_cost").value = existingPurchase.unitCost; }
 
   $("#f_cancel").addEventListener("click", closeModal);
   $("#f_save").addEventListener("click", async function(){
@@ -1539,11 +1761,15 @@ function openPurchaseModal(){
     if(!(await validateTxnDate($("#f_date").value))) return;
     var wholesaler = wField.value.trim(), date = $("#f_date").value||todayStr(), notes = $("#f_notes").value.trim();
 
-    if(mode==="new"){
+    if(isEdit){
+      await updatePurchase(existingPurchase, {qty:qty, unitCost:unitCost, date:date, wholesaler:wholesaler, notes:notes, updateCost:$("#f_updatecost").checked});
+    } else if(mode==="new"){
       var name = $("#f_newname").value.trim();
       if(!name){ toast("Enter the saree's name.", "error"); return; }
+      var newCat = $("#f_newcategory").value.trim();
+      if(newCat) addCategoryQuick(newCat);
       await recordPurchaseWithNewItem({
-        name:name, sku:genSku(name), category:$("#f_newcategory").value, color:$("#f_newcolor").value.trim(),
+        name:name, sku:genSku(name), category:newCat, color:$("#f_newcolor").value.trim(),
         sellingPrice:Number($("#f_newprice").value)||0, reorderLevel:Number($("#f_newreorder").value)||0
       }, {qty:qty, unitCost:unitCost, date:date, wholesaler:wholesaler, notes:notes});
       toast("New item added and purchase recorded.", "success");
@@ -1559,52 +1785,81 @@ function openPurchaseModal(){
 }
 
 /* ---- sale modal ---- */
-function openSaleModal(){
-  if(state.inventory.length===0){ toast("Add an inventory item first.", "error"); return; }
+function openSaleModal(existingSale){
+  var isEdit = !!existingSale;
+  if(!isEdit && state.inventory.length===0){ toast("Add an inventory item first.", "error"); return; }
+  var editItem = isEdit ? findItem(existingSale.itemId) : null;
   openModal(
-    '<h3>Record sale</h3>'+
+    '<h3>'+(isEdit?'Edit sale':'Record sale')+'</h3>'+
+    (isEdit ? '<p class="hint" style="margin:-4px 0 10px 0;">Item: <strong>'+escapeHtml(existingSale.itemName)+'</strong> (can\'t be changed — delete and re-add if it was the wrong item)</p>' : '')+
     '<div class="form-grid">'+
-      '<div class="field full"><label>Item</label><select id="f_item">'+itemOptions()+'</select></div>'+
-      '<div class="field"><label>Channel</label><select id="f_channel">'+CHANNELS.map(function(c){return '<option>'+c+'</option>';}).join("")+'</select></div>'+
-      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+todayStr()+'"></div>'+
-      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="1"></div>'+
-      '<div class="field"><label>Unit price (₹)</label><input id="f_price" type="number" min="0" step="1"></div>'+
-      '<div class="field"><label>Discount (₹, optional)</label><input id="f_discount" type="number" min="0" step="1" value="0"></div>'+
-      '<div class="field"><label>Customer (optional)</label><input id="f_customer" placeholder="Name"></div>'+
+      (isEdit ? '' : '<div class="field full"><label>Item</label>'+searchableSelectHtml("f_item", itemChoices(), "", "Type an item name…")+'</div>')+
+      '<div class="field"><label>Channel</label><select id="f_channel">'+CHANNELS.map(function(c){return '<option'+(isEdit&&existingSale.channel===c?' selected':'')+'>'+c+'</option>';}).join("")+'</select></div>'+
+      '<div class="field"><label>Payment method</label><select id="f_payment">'+PAYMENT_METHODS.map(function(p){return '<option'+(isEdit&&existingSale.paymentMethod===p?' selected':'')+'>'+p+'</option>';}).join("")+'</select></div>'+
+      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingSale.date:todayStr())+'"></div>'+
+      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingSale.qty:1)+'"></div>'+
+      '<div class="field"><label>List price (₹)</label><input id="f_listprice" type="number" min="0" step="1" value="'+(isEdit?existingSale.listPriceAtSale:"")+'" readonly style="background:var(--cream);color:var(--ink-soft);"></div>'+
+      '<div class="field"><label>Sold at (₹)</label><input id="f_price" type="number" min="0" step="1" value="'+(isEdit?existingSale.unitPrice:"")+'"></div>'+
+      '<div class="field full"><span class="hint" id="f_discounthint"></span></div>'+
+      '<div class="field"><label>Customer (optional)</label><input id="f_customer" list="customerList" value="'+escapeHtml(isEdit?(existingSale.customer||""):"")+'" placeholder="Name"></div>'+
       '<div class="field full"><span class="hint" id="f_stockhint"></span></div>'+
-      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>'+
+      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(isEdit?(existingSale.notes||""):"")+'</textarea></div>'+
     '</div>'+
     '<div class="modal-actions">'+
       '<button class="btn ghost" id="f_cancel">Cancel</button>'+
-      '<button class="btn" id="f_save">Record sale</button>'+
+      '<button class="btn" id="f_save">'+(isEdit?'Save changes':'Record sale')+'</button>'+
     '</div>'
   );
-  function syncItem(){
-    var it = findItem($("#f_item").value);
+  function currentItem(){
+    return isEdit ? editItem : findItem($("#f_item").value);
+  }
+  function updateDiscountHint(){
+    var qty = Number($("#f_qty").value)||0;
+    var list = Number($("#f_listprice").value)||0;
+    var sold = Number($("#f_price").value)||0;
+    var disc = Math.max(0, qty*(list-sold));
+    $("#f_discounthint").textContent = disc>0 ? ("Discount given: "+fmtMoney(disc)+" total") : (sold>list && list>0 ? "Selling above list price." : "No discount.");
+  }
+  function syncItem(itemId){
+    var it = isEdit ? editItem : findItem(itemId);
     if(it){
-      $("#f_price").value = it.sellingPrice||"";
+      $("#f_listprice").value = it.sellingPrice||0;
+      if(!isEdit) $("#f_price").value = it.sellingPrice||"";
       $("#f_stockhint").textContent = "Current stock: "+fmtNum(it.stock)+" · Cost price: "+fmtMoney(it.costPrice);
     }
+    updateDiscountHint();
   }
-  $("#f_item").addEventListener("change", syncItem);
-  syncItem();
+  if(!isEdit){
+    wireSearchableSelect("f_item", itemChoices(), function(itemId){ syncItem(itemId); });
+  } else {
+    syncItem();
+  }
+  $("#f_qty").addEventListener("input", updateDiscountHint);
+  $("#f_price").addEventListener("input", updateDiscountHint);
   $("#f_cancel").addEventListener("click", closeModal);
   $("#f_save").addEventListener("click", async function(){
-    var itemId = $("#f_item").value;
-    var it = findItem(itemId);
+    var it = currentItem();
+    var itemId = isEdit ? existingSale.itemId : $("#f_item").value;
     var qty = Number($("#f_qty").value);
     var price = Number($("#f_price").value);
+    var listPrice = Number($("#f_listprice").value)||price;
     if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
-    if(price<0 || $("#f_price").value===""){ toast("Enter a unit price.", "error"); return; }
+    if(price<0 || $("#f_price").value===""){ toast("Enter the price it sold at.", "error"); return; }
     if(!(await validateTxnDate($("#f_date").value))) return;
-    if(it && qty > it.stock){
+    if(!isEdit && it && qty > it.stock){
       if(!(await appConfirm("Only "+it.stock+" in stock but you're selling "+qty+". Stock will be set to 0. Continue?", {title:"Not enough stock", confirmLabel:"Continue anyway"}))) return;
     }
-    await recordSale({
-      itemId:itemId, channel:$("#f_channel").value, date:$("#f_date").value||todayStr(),
-      qty:qty, unitPrice:price, discount:Number($("#f_discount").value)||0,
+    var payload = {
+      channel:$("#f_channel").value, paymentMethod:$("#f_payment").value, date:$("#f_date").value||todayStr(),
+      qty:qty, unitPrice:price, listPrice:listPrice,
       customer:$("#f_customer").value.trim(), notes:$("#f_notes").value.trim()
-    });
+    };
+    if(isEdit){
+      await updateSale(existingSale, payload);
+    } else {
+      payload.itemId = itemId;
+      await recordSale(payload);
+    }
     closeModal();
   });
 }
@@ -1615,7 +1870,7 @@ function openAdjustmentModal(){
   openModal(
     '<h3>Manual stock adjustment</h3>'+
     '<div class="form-grid">'+
-      '<div class="field full"><label>Item</label><select id="f_item">'+itemOptions()+'</select></div>'+
+      '<div class="field full"><label>Item</label>'+searchableSelectHtml("f_item", itemChoices(), "", "Type an item name…")+'</div>'+
       '<div class="field"><label>Direction</label><select id="f_type"><option value="in">Stock in (add)</option><option value="out">Stock out (remove)</option></select></div>'+
       '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="1"></div>'+
       '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+todayStr()+'"></div>'+
@@ -1631,6 +1886,7 @@ function openAdjustmentModal(){
   $("#f_save").addEventListener("click", async function(){
     var qty = Number($("#f_qty").value);
     if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
+    if(!$("#f_item").value){ toast("Choose an item.", "error"); return; }
     if(!(await validateTxnDate($("#f_date").value))) return;
     await recordAdjustment({
       itemId:$("#f_item").value, type:$("#f_type").value, qty:qty,
@@ -1709,7 +1965,17 @@ function simpleTable(headers, rows){
 function renderInventory(){
   var q = ($("#invSearch").value||"").toLowerCase().trim();
   var sort = $("#invSort").value;
+  var catFilterEl = $("#invCategoryFilter");
+  var catFilter = catFilterEl.value;
+  var catList = state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES;
+  var wantedOptions = ['<option value="">All categories</option>'].concat(catList.map(function(c){return '<option'+(c===catFilter?' selected':'')+'>'+escapeHtml(c)+'</option>';})).join("");
+  if(catFilterEl.dataset.rendered !== wantedOptions){
+    catFilterEl.innerHTML = wantedOptions;
+    catFilterEl.dataset.rendered = wantedOptions;
+    catFilterEl.value = catFilter;
+  }
   var rows = state.inventory.filter(function(i){
+    if(catFilter && i.category!==catFilter) return false;
     if(!q) return true;
     return (i.name||"").toLowerCase().indexOf(q)>=0 || (i.category||"").toLowerCase().indexOf(q)>=0 ||
       (i.wholesaler||"").toLowerCase().indexOf(q)>=0 || (i.color||"").toLowerCase().indexOf(q)>=0;
@@ -1721,7 +1987,7 @@ function renderInventory(){
   else rows.sort(function(a,b){return (a.name||"").localeCompare(b.name||"");});
 
   if(rows.length===0){
-    $("#invTable").innerHTML = '<div class="empty">No items yet. Add your first saree with "+ Add item".</div>';
+    $("#invTable").innerHTML = '<div class="empty">No items match this filter.</div>';
     return;
   }
   var body = rows.map(function(i){
@@ -1751,6 +2017,7 @@ function renderInventory(){
 }
 $("#invSearch").addEventListener("input", renderInventory);
 $("#invSort").addEventListener("change", renderInventory);
+$("#invCategoryFilter").addEventListener("change", renderInventory);
 
 /* ---------------- render: purchases ---------------- */
 function renderPurchases(){
@@ -1770,10 +2037,16 @@ function renderPurchases(){
     return '<tr><td>'+escapeHtml(p.date)+'</td><td>'+escapeHtml(p.itemName)+'</td><td>'+escapeHtml(p.wholesaler||"")+'</td>'+
       '<td class="num">'+fmtNum(p.qty)+'</td><td class="num">'+fmtMoney(p.unitCost)+'</td>'+
       '<td class="num">'+fmtMoney(p.totalCost)+'</td>'+
-      '<td><button class="btn small ghost" data-del="'+p.id+'">Delete</button></td></tr>';
+      '<td><div class="row-actions"><button class="btn small secondary" data-edit="'+p.id+'">Edit</button><button class="btn small ghost" data-del="'+p.id+'">Delete</button></div></td></tr>';
   }).join("");
   $("#purTable").innerHTML = '<table><thead><tr><th>Date</th><th>Item</th><th>Wholesaler</th>'+
     '<th class="num">Qty</th><th class="num">Unit cost</th><th class="num">Total</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
+  $all("[data-edit]", $("#purTable")).forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var p = state.purchases.find(function(x){return x.id===btn.dataset.edit;});
+      if(p) openPurchaseModal(p);
+    });
+  });
   $all("[data-del]", $("#purTable")).forEach(function(btn){
     btn.addEventListener("click", async function(){
       var p = state.purchases.find(function(x){return x.id===btn.dataset.del;});
@@ -1803,13 +2076,21 @@ function renderSales(){
     var chClass = s.channel==="Online"?"online":(s.channel==="Exhibition"?"exhibition":"in-house");
     return '<tr><td>'+escapeHtml(s.date)+'</td><td>'+escapeHtml(s.itemName)+'</td>'+
       '<td><span class="tag '+chClass+'">'+escapeHtml(s.channel)+'</span></td>'+
+      '<td class="muted">'+escapeHtml(s.paymentMethod||"")+'</td>'+
       '<td class="num">'+fmtNum(s.qty)+'</td><td class="num">'+fmtMoney(s.unitPrice)+'</td>'+
+      '<td class="num">'+fmtMoney(s.discount||0)+'</td>'+
       '<td class="num">'+fmtMoney(s.totalPrice)+'</td>'+
       '<td class="num '+(profit>=0?'profit-pos':'profit-neg')+'">'+fmtMoney(profit)+'</td>'+
-      '<td><button class="btn small ghost" data-del="'+s.id+'">Delete</button></td></tr>';
+      '<td><div class="row-actions"><button class="btn small secondary" data-edit="'+s.id+'">Edit</button><button class="btn small ghost" data-del="'+s.id+'">Delete</button></div></td></tr>';
   }).join("");
-  $("#saleTable").innerHTML = '<table><thead><tr><th>Date</th><th>Item</th><th>Channel</th>'+
-    '<th class="num">Qty</th><th class="num">Unit price</th><th class="num">Total</th><th class="num">Profit</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
+  $("#saleTable").innerHTML = '<table><thead><tr><th>Date</th><th>Item</th><th>Channel</th><th>Payment</th>'+
+    '<th class="num">Qty</th><th class="num">Unit price</th><th class="num">Discount</th><th class="num">Total</th><th class="num">Profit</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
+  $all("[data-edit]", $("#saleTable")).forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var s = state.sales.find(function(x){return x.id===btn.dataset.edit;});
+      if(s) openSaleModal(s);
+    });
+  });
   $all("[data-del]", $("#saleTable")).forEach(function(btn){
     btn.addEventListener("click", async function(){
       var s = state.sales.find(function(x){return x.id===btn.dataset.del;});
@@ -1891,6 +2172,7 @@ function renderReportBody(){
   if(currentReport==="purchases") return renderPurchaseReport(el);
   if(currentReport==="pnl") return renderPnlReport(el);
   if(currentReport==="ledger") return renderLedgerReport(el);
+  if(currentReport==="customers") return renderCustomersReport(el);
 }
 
 function renderStockReport(el){
@@ -1940,46 +2222,59 @@ function renderLowStockReport(el){
   });
 }
 
+function aggregateSalesBy(rows, keyFn){
+  var buckets = {};
+  rows.forEach(function(s){
+    var key = keyFn(s) || "(none)";
+    var profit = (s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
+    if(!buckets[key]) buckets[key] = {qty:0, revenue:0, profit:0};
+    buckets[key].qty += s.qty||0;
+    buckets[key].revenue += s.totalPrice||0;
+    buckets[key].profit += profit;
+  });
+  return Object.keys(buckets).sort(function(a,b){ return buckets[b].revenue-buckets[a].revenue; })
+    .map(function(k){ return [k, fmtNum(buckets[k].qty), fmtMoney(buckets[k].revenue), fmtMoney(buckets[k].profit)]; });
+}
 function renderSalesReport(el){
   var r = getRange();
   var rows = state.sales.filter(function(s){return inRange(s.date, r);});
-  var byChannel = {};
-  CHANNELS.forEach(function(c){ byChannel[c] = {qty:0,revenue:0,profit:0}; });
-  var totalRevenue=0, totalProfit=0, totalQty=0;
+  var totalRevenue=0, totalProfit=0, totalQty=0, totalDiscount=0;
   rows.forEach(function(s){
     var profit = (s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
     totalRevenue += s.totalPrice||0; totalProfit += profit; totalQty += s.qty||0;
-    if(!byChannel[s.channel]) byChannel[s.channel] = {qty:0,revenue:0,profit:0};
-    byChannel[s.channel].qty += s.qty||0;
-    byChannel[s.channel].revenue += s.totalPrice||0;
-    byChannel[s.channel].profit += profit;
+    totalDiscount += s.discount||0;
   });
+  var byChannel = aggregateSalesBy(rows, function(s){return s.channel;});
+  var byCategory = aggregateSalesBy(rows, function(s){return s.category;});
+  var byWholesaler = aggregateSalesBy(rows, function(s){return s.wholesaler;});
+  var byPayment = aggregateSalesBy(rows, function(s){return s.paymentMethod;});
   el.innerHTML =
     '<div class="sub-cards">'+
       '<div class="card"><div class="label">Units sold</div><div class="value">'+fmtNum(totalQty)+'</div></div>'+
       '<div class="card"><div class="label">Revenue</div><div class="value">'+fmtMoney(totalRevenue)+'</div></div>'+
       '<div class="card"><div class="label">Profit</div><div class="value">'+fmtMoney(totalProfit)+'</div></div>'+
+      '<div class="card"><div class="label">Total discount given</div><div class="value">'+fmtMoney(totalDiscount)+'</div></div>'+
     '</div>'+
-    '<div class="section-block"><h3>By channel</h3>'+simpleTable(
-      ["Channel","Units","Revenue","Profit"],
-      Object.keys(byChannel).filter(function(c){return byChannel[c].qty>0;}).map(function(c){
-        return [c, fmtNum(byChannel[c].qty), fmtMoney(byChannel[c].revenue), fmtMoney(byChannel[c].profit)];
-      })
-    )+'</div>'+
+    '<div class="section-block"><h3>By channel</h3>'+simpleTable(["Channel","Units","Revenue","Profit"], byChannel)+'</div>'+
+    '<div class="section-block"><h3>By category</h3>'+simpleTable(["Category","Units","Revenue","Profit"], byCategory)+'</div>'+
+    '<div class="section-block"><h3>By wholesaler</h3>'+simpleTable(["Wholesaler","Units","Revenue","Profit"], byWholesaler)+'</div>'+
+    '<div class="section-block"><h3>By payment method</h3>'+simpleTable(["Payment method","Units","Revenue","Profit"], byPayment)+'</div>'+
     '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
     '<div class="table-wrap">'+(rows.length ? simpleTable(
-      ["Date","Item","Channel","Qty","Unit price","Total","Profit"],
+      ["Date","Item","Category","Wholesaler","Channel","Payment","Qty","List price","Sold at","Discount","Total","Profit"],
       rows.map(function(s){
         var profit = (s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
-        return [escapeHtml(s.date), escapeHtml(s.itemName), escapeHtml(s.channel), fmtNum(s.qty), fmtMoney(s.unitPrice), fmtMoney(s.totalPrice), fmtMoney(profit)];
+        return [escapeHtml(s.date), escapeHtml(s.itemName), escapeHtml(s.category||""), escapeHtml(s.wholesaler||""),
+          escapeHtml(s.channel), escapeHtml(s.paymentMethod||""), fmtNum(s.qty), fmtMoney(s.listPriceAtSale||s.unitPrice),
+          fmtMoney(s.unitPrice), fmtMoney(s.discount||0), fmtMoney(s.totalPrice), fmtMoney(profit)];
       })
     ) : '<div class="empty">No sales in this range.</div>')+'</div>';
   $("#expBtn").addEventListener("click", function(){
     exportCSV("sales-report-"+todayStr()+".csv",
-      ["Date","Item","Channel","Qty","Unit Price","Total","Cost At Sale","Profit"],
+      ["Date","Item","Category","Wholesaler","Channel","Payment Method","Qty","List Price","Sold At","Discount","Total","Cost At Sale","Profit","Customer"],
       rows.map(function(s){
         var profit=(s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
-        return [s.date,s.itemName,s.channel,s.qty,s.unitPrice,s.totalPrice,s.costPriceAtSale||0,profit];
+        return [s.date,s.itemName,s.category||"",s.wholesaler||"",s.channel,s.paymentMethod||"",s.qty,s.listPriceAtSale||s.unitPrice,s.unitPrice,s.discount||0,s.totalPrice,s.costPriceAtSale||0,profit,s.customer||""];
       })
     );
   });
@@ -2060,6 +2355,39 @@ function renderLedgerReport(el){
     exportCSV("stock-in-out-"+todayStr()+".csv",
       ["Date","Item","Movement","Qty","Reason","Detail"],
       rows.map(function(l){return [l.date,l.itemName,l.type,l.qty,l.reason||"",l.detail||""];})
+    );
+  });
+}
+
+function renderCustomersReport(el){
+  var r = getRange();
+  var rows = state.sales.filter(function(s){return inRange(s.date, r) && s.customer && s.customer.trim();});
+  var buckets = {};
+  rows.forEach(function(s){
+    var key = s.customer.trim();
+    if(!buckets[key]) buckets[key] = {visits:0, qty:0, revenue:0, last:""};
+    buckets[key].visits += 1;
+    buckets[key].qty += s.qty||0;
+    buckets[key].revenue += s.totalPrice||0;
+    if(s.date > buckets[key].last) buckets[key].last = s.date;
+  });
+  var names = Object.keys(buckets).sort(function(a,b){ return buckets[b].revenue-buckets[a].revenue; });
+  var totalRevenue = names.reduce(function(s,n){ return s+buckets[n].revenue; }, 0);
+  el.innerHTML =
+    '<div class="sub-cards">'+
+      '<div class="card"><div class="label">Named customers</div><div class="value">'+fmtNum(names.length)+'</div></div>'+
+      '<div class="card"><div class="label">Revenue from named customers</div><div class="value">'+fmtMoney(totalRevenue)+'</div></div>'+
+    '</div>'+
+    '<p class="hint" style="margin:0 0 10px 0;">Only sales with a customer name attached show up here — walk-in sales left blank aren\'t included.</p>'+
+    '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
+    '<div class="table-wrap">'+(names.length ? simpleTable(
+      ["Customer","Visits","Units bought","Total spent","Last purchase"],
+      names.map(function(n){ return [escapeHtml(n), fmtNum(buckets[n].visits), fmtNum(buckets[n].qty), fmtMoney(buckets[n].revenue), escapeHtml(buckets[n].last)]; })
+    ) : '<div class="empty">No named-customer sales in this range.</div>')+'</div>';
+  $("#expBtn").addEventListener("click", function(){
+    exportCSV("customers-"+todayStr()+".csv",
+      ["Customer","Visits","Units Bought","Total Spent","Last Purchase"],
+      names.map(function(n){ return [n, buckets[n].visits, buckets[n].qty, buckets[n].revenue, buckets[n].last]; })
     );
   });
 }
