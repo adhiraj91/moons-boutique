@@ -360,7 +360,7 @@
 </head>
 <body>
 
-<div style="position:fixed;bottom:4px;right:6px;font-size:10px;color:rgba(0,0,0,0.35);z-index:9999;pointer-events:none;">build-2026-09-17-F-BANNER</div>
+<div style="position:fixed;bottom:4px;right:6px;font-size:10px;color:rgba(0,0,0,0.35);z-index:9999;pointer-events:none;">build-2026-09-17-G-SIGNOUT</div>
 <div id="debugBanner" style="position:fixed;top:0;left:0;right:0;background:#FFEB3B;color:#000;font-size:12px;padding:8px;z-index:99999;word-break:break-word;font-family:monospace;">DEBUG: script not yet run</div>
 
 <div id="loginScreen">
@@ -729,7 +729,12 @@ auth.onAuthStateChanged(function(user){
     renderAll();
   }
 });
-$("#accessSignOut").addEventListener("click", function(){ auth.signOut(); });
+$("#accessSignOut").addEventListener("click", function(){
+  dbg("SIGN OUT CLICKED");
+  $("#accessScreen").classList.add("hidden");
+  $("#loginScreen").classList.remove("hidden");
+  auth.signOut();
+});
 
 function setSyncStatus(ok, text){
   $("#syncDot").className = "sync-dot" + (ok?"":" off");
