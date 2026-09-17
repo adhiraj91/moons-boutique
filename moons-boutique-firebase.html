@@ -320,6 +320,7 @@
     padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;
   }
   .report-tabs button.active{background:var(--maroon);border-color:var(--maroon);color:#fff;}
+  .btn.active-range{background:var(--maroon);color:#fff;border-color:var(--maroon);}
 
   .modal-overlay{
     position:fixed;inset:0;background:rgba(30,20,15,0.45);
@@ -1181,14 +1182,6 @@ $all("#tabNav button").forEach(function(btn){
     renderAll();
   });
 });
-$all("#reportTabs button").forEach(function(btn){
-  btn.addEventListener("click", function(){
-    currentReport = btn.dataset.report;
-    $all("#reportTabs button").forEach(function(b){ b.classList.toggle("active", b===btn); });
-    renderReports();
-  });
-});
-
 $all("#reportTabs button").forEach(function(btn){
   btn.addEventListener("click", function(){
     currentReport = btn.dataset.report;
@@ -2280,19 +2273,45 @@ function rangeRowHtml(withRange){
     '<button class="btn secondary small" id="repThisMonth" type="button">This month</button>'+
     '<button class="btn ghost small" id="repAllTime" type="button">All time</button>';
 }
+function updateRangeButtonActive(){
+  var mBtn = $("#repThisMonth"), aBtn = $("#repAllTime");
+  if(!mBtn || !aBtn) return;
+  var from = $("#repFrom") ? $("#repFrom").value : "";
+  var to = $("#repTo") ? $("#repTo").value : "";
+  var isMonth = from===monthStartStr() && to===todayStr();
+  var isAll = from==="" && to==="";
+  mBtn.classList.toggle("active-range", isMonth);
+  aBtn.classList.toggle("active-range", isAll);
+}
 function renderReports(){
   var needsRange = currentReport!=="stock" && currentReport!=="lowstock";
   $("#reportRangeRow").innerHTML = rangeRowHtml(needsRange);
   if(needsRange){
     $("#repThisMonth").addEventListener("click", function(){
-      $("#repFrom").value = monthStartStr(); $("#repTo").value = todayStr(); renderReportBody();
+      $("#repFrom").value = monthStartStr(); $("#repTo").value = todayStr();
+      updateRangeButtonActive(); renderReportBody();
     });
     $("#repAllTime").addEventListener("click", function(){
-      $("#repFrom").value = ""; $("#repTo").value = ""; renderReportBody();
+      $("#repFrom").value = ""; $("#repTo").value = "";
+      updateRangeButtonActive(); renderReportBody();
     });
-    wireDateRange("repFrom", "repTo", renderReportBody);
+    wireDateRange("repFrom", "repTo", function(){ updateRangeButtonActive(); renderReportBody(); });
+    updateRangeButtonActive();
   }
   renderReportBody();
+}
+/* Background data syncs used to rebuild the whole range row on every
+   change, silently wiping whatever date range you'd picked. This just
+   refreshes the report's numbers instead, leaving your selection alone —
+   the row only gets rebuilt when you actually switch report tabs. */
+function refreshReports(){
+  var needsRange = currentReport!=="stock" && currentReport!=="lowstock";
+  if(needsRange && $("#reportRangeRow").innerHTML.trim()===""){
+    renderReports();
+  } else {
+    updateRangeButtonActive();
+    renderReportBody();
+  }
 }
 function getRange(){
   var from = $("#repFrom") ? $("#repFrom").value : "";
@@ -2539,7 +2558,7 @@ function renderAll(){
   renderPurchases();
   renderSales();
   renderLedger();
-  renderReports();
+  refreshReports();
 }
 
 /* ---------------- boot ---------------- */
