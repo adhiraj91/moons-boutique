@@ -365,8 +365,6 @@
 </head>
 <body>
 
-<div style="position:fixed;bottom:4px;right:6px;font-size:10px;color:rgba(0,0,0,0.35);z-index:9999;pointer-events:none;">build-2026-09-17-H-CSSFIX</div>
-<div id="debugBanner" style="position:fixed;top:0;left:0;right:0;background:#FFEB3B;color:#000;font-size:12px;padding:8px;z-index:99999;word-break:break-word;font-family:monospace;">DEBUG: script not yet run</div>
 
 <div id="loginScreen">
   <div class="login-card">
@@ -676,28 +674,19 @@ function memberDocRef(email){
 
 var currentMemberRole = null; // 'owner' | 'member' | null
 
-function dbg(msg){
-  var el = document.getElementById("debugBanner");
-  if(el) el.textContent = el.textContent + " || " + msg;
-}
 auth.onAuthStateChanged(function(user){
-  dbg("onAuthStateChanged fired, user="+(user ? user.email : "null"));
   unsubscribers.forEach(function(u){ try{ u(); }catch(e){} });
   unsubscribers = [];
   $("#accessScreen").classList.add("hidden");
   if(user){
     db = makeDbShim();
     setSyncStatus(true, "Checking access…");
-    var lookupPath = memberDocRef(user.email).path;
-    dbg("about to check path: "+lookupPath);
     memberDocRef(user.email).get().then(function(snap){
-      dbg("got snapshot back, exists="+snap.exists+", ref.path="+snap.ref.path);
       if(snap.exists){
         currentMemberRole = snap.data().role || "member";
         state.dbOffline = false;
         $("#loginScreen").classList.add("hidden");
         setSyncStatus(true, "Synced");
-        dbg("MEMBER FOUND, role="+currentMemberRole+" -- calling subscribeAll()");
         subscribeAll();
       } else {
         currentMemberRole = null;
@@ -705,9 +694,7 @@ auth.onAuthStateChanged(function(user){
         setSyncStatus(false, "No access");
         $("#loginScreen").classList.add("hidden");
         $("#accessEmail").textContent = user.email;
-        var msg1 = "Looked for a document at: "+snap.ref.path+" — didn't find it. Logged-in email was: "+user.email;
-        dbg("NOT FOUND: "+msg1);
-        $("#accessMessage").textContent = msg1;
+        $("#accessMessage").textContent = "isn't on the approved list for Moon's Boutique yet. Ask the owner to add you under ☰ → Manage access.";
         $("#accessScreen").classList.remove("hidden");
       }
     }).catch(function(err){
@@ -716,13 +703,10 @@ auth.onAuthStateChanged(function(user){
       setSyncStatus(false, "Error");
       $("#loginScreen").classList.add("hidden");
       $("#accessEmail").textContent = user.email;
-      var msg2 = "Couldn't check access — real error: "+(err && err.code ? err.code+" — " : "")+(err && err.message ? err.message : "unknown error");
-      dbg("CAUGHT ERROR: "+msg2);
-      $("#accessMessage").textContent = msg2;
+      $("#accessMessage").textContent = "Something went wrong checking access. Please try again, or sign out and back in.";
       $("#accessScreen").classList.remove("hidden");
     });
   } else {
-    dbg("not signed in branch reached");
     db = null;
     currentMemberRole = null;
     state.dbOffline = true;
@@ -735,7 +719,6 @@ auth.onAuthStateChanged(function(user){
   }
 });
 $("#accessSignOut").addEventListener("click", function(){
-  dbg("SIGN OUT CLICKED");
   $("#accessScreen").classList.add("hidden");
   $("#loginScreen").classList.remove("hidden");
   auth.signOut();
@@ -763,7 +746,6 @@ function setSyncStatus(ok, text){
   async function submitAuth(){
     var email = $("#authEmail").value.trim();
     var pass = $("#authPassword").value;
-    dbg("submitAuth called, mode="+mode+", email="+email);
     var errEl = $("#authError");
     errEl.textContent = "";
     if(!email || !pass){ errEl.textContent = "Enter both email and password."; return; }
