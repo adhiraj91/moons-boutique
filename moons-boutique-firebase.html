@@ -360,6 +360,8 @@
 </head>
 <body>
 
+<div style="position:fixed;bottom:4px;right:6px;font-size:10px;color:rgba(0,0,0,0.35);z-index:9999;pointer-events:none;">build-2026-09-17-D</div>
+
 <div id="loginScreen">
   <div class="login-card">
     <div class="login-logo">
@@ -688,7 +690,7 @@ auth.onAuthStateChanged(function(user){
         setSyncStatus(false, "No access");
         $("#loginScreen").classList.add("hidden");
         $("#accessEmail").textContent = user.email;
-        $("#accessMessage").textContent = "isn't on the approved list for Moon's Boutique yet. Ask the owner to add you under ☰ → Manage access.";
+        $("#accessMessage").textContent = "isn't on the approved list for Moon's Boutique yet. (Looked for a document at: "+snap.ref.path+" — didn't find it.) Ask the owner to add you under ☰ → Manage access.";
         $("#accessScreen").classList.remove("hidden");
       }
     }).catch(function(err){
