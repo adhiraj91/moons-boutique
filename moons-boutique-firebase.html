@@ -798,7 +798,10 @@ function setSyncStatus(ok, text){
   $("#googleSignIn").addEventListener("click", function(){
     var provider = new firebase.auth.GoogleAuthProvider();
     $("#authError").textContent = "";
-    auth.signInWithRedirect(provider);
+    auth.signInWithRedirect(provider).catch(function(err){
+      console.error(err);
+      $("#authError").textContent = firebaseErrorMessage(err);
+    });
   });
   $("#authForgot").addEventListener("click", async function(){
     var email = $("#authEmail").value.trim();
