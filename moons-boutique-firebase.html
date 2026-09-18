@@ -305,6 +305,28 @@
     border:1px solid var(--line);
   }
   .photo-col{width:52px;}
+  .inv-category{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    margin-bottom:10px;overflow:hidden;
+  }
+  .inv-category>summary{
+    padding:13px 16px;cursor:pointer;list-style:none;font-family:var(--font-display);font-size:15px;
+    display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+  }
+  .inv-category>summary::-webkit-details-marker{display:none;}
+  .inv-category>summary::before{content:"▸";color:var(--gold);margin-right:2px;font-size:12px;}
+  .inv-category[open]>summary::before{content:"▾";}
+  .inv-subcat-wrap{padding:0 12px 10px 12px;}
+  .inv-subcat{
+    background:var(--cream);border:1px solid var(--line);border-radius:8px;
+    margin-bottom:8px;padding:2px 4px;
+  }
+  .inv-subcat>summary{
+    padding:9px 10px;cursor:pointer;list-style:none;font-size:13.5px;font-weight:600;
+  }
+  .inv-subcat>summary::-webkit-details-marker{display:none;}
+  .inv-subcat>summary::before{content:"▸";color:var(--ink-soft);margin-right:6px;font-size:11px;}
+  .inv-subcat[open]>summary::before{content:"▾";}
   .photo-upload{display:flex;align-items:center;gap:14px;}
   .photo-preview{
     width:76px;height:76px;border-radius:10px;object-fit:cover;
@@ -491,7 +513,7 @@
   <section class="tab-panel" id="tab-inventory">
     <div class="panel-head">
       <div><h2>Inventory</h2><p>Every saree you stock, with cost, price and current quantity.</p></div>
-      <button class="btn" id="btnAddItem">+ Add item</button>
+      <button class="btn" id="btnAddItem">+ Add stock</button>
     </div>
     <div class="filters">
       <label>Search<input type="text" id="invSearch" placeholder="Name, color, wholesaler…"></label>
@@ -602,7 +624,7 @@ var PAYMENT_METHODS = ["Cash","UPI","Card","Bank transfer","Other"];
 /* ---------------- state ---------------- */
 var state = {
   inventory: [], purchases: [], sales: [], stockLog: [],
-  categories: [], wholesalers: [], customers: [], business: {}, members: [],
+  categories: [], wholesalers: [], customers: [], exhibitions: [], business: {}, members: [],
   dbReady:false, dbOffline:false
 };
 var db = null;
@@ -619,6 +641,9 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
   });
+}
+function saleProfit(s){
+  return saleProfit(s) - (s.deliveryCharge||0);
 }
 function fmtMoney(n){
   n = Number(n)||0;
@@ -638,8 +663,10 @@ function monthStartStr(){
 function nowIso(){ return new Date().toISOString(); }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function genSku(name){
-  var base = (name||"ITEM").toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4) || "ITEM";
-  return base + "-" + Math.floor(1000+Math.random()*9000);
+  var base = (name||"ITEM").toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3) || "ITM";
+  var t = Date.now().toString(36).toUpperCase().slice(-4);
+  var r = Math.floor(10+Math.random()*90);
+  return base+"-"+t+r;
 }
 
 function toast(msg, type){
@@ -759,7 +786,7 @@ auth.onAuthStateChanged(function(user){
     currentMemberRole = null;
     state.dbOffline = true;
     state.inventory = []; state.purchases = []; state.sales = []; state.stockLog = [];
-    state.categories = []; state.wholesalers = []; state.customers = []; state.business = {}; state.members = [];
+    state.categories = []; state.wholesalers = []; state.customers = []; state.exhibitions = []; state.business = {}; state.members = [];
     categoriesSeeded = false;
     $("#loginScreen").classList.remove("hidden");
     setSyncStatus(false, "Not signed in");
@@ -907,6 +934,12 @@ function subscribeAll(){
     if(currentDrawerView==="customers") renderDrawer();
   }, function(err){ console.error(err); }));
 
+  unsubscribers.push(db.collection("exhibitions").onSnapshot(function(snap){
+    state.exhibitions = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    state.exhibitions.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+    if(currentDrawerView==="exhibitions") renderDrawer();
+  }, function(err){ console.error(err); }));
+
   unsubscribers.push(db.doc("settings/business").onSnapshot(function(snap){
     state.business = snap.exists ? snap.data() : {};
     if(currentDrawerView==="business") renderDrawer();
@@ -929,8 +962,8 @@ function findItem(id){
 async function addItem(data){
   if(state.dbOffline){ toast("Please log in first.", "error"); return; }
   await db.collection("inventory").add({
-    name:data.name, sku:data.sku, category:data.category, color:data.color,
-    wholesaler:data.wholesaler, costPrice:data.costPrice, sellingPrice:data.sellingPrice,
+    name:data.name, sku:data.sku, category:data.category, subcategory:data.subcategory||"", color:data.color,
+    wholesaler:data.wholesaler, costPrice:data.costPrice, baseCostPrice:data.baseCostPrice!=null?data.baseCostPrice:data.costPrice, sellingPrice:data.sellingPrice,
     stock:data.stock, reorderLevel:data.reorderLevel, notes:data.notes||"",
     photoData: data.photoData || null, createdAt: nowIso()
   });
@@ -1025,12 +1058,15 @@ async function recordSale(data){
   await db.doc("inventory/"+item.id).update({stock:newStock});
   var total = data.qty*data.unitPrice;
   var discount = Math.max(0, data.qty*((data.listPrice||data.unitPrice)-data.unitPrice));
+  var exh = data.exhibitionId ? state.exhibitions.find(function(e){return e.id===data.exhibitionId;}) : null;
   var sRef = await db.collection("sales").add({
     date:data.date, channel:data.channel, itemId:item.id, itemName:item.name,
-    category:item.category||"", wholesaler:item.wholesaler||"", paymentMethod:data.paymentMethod||"Cash",
+    category:item.category||"", subcategory:item.subcategory||"", wholesaler:item.wholesaler||"", paymentMethod:data.paymentMethod||"Cash",
     qty:data.qty, listPriceAtSale:data.listPrice||data.unitPrice, unitPrice:data.unitPrice,
     discount:discount, totalPrice:total,
     costPriceAtSale: item.costPrice||0, customer:data.customer||"", notes:data.notes||"",
+    exhibitionId: data.exhibitionId||"", exhibitionName: exh ? exh.name : "",
+    deliveryCharge: data.deliveryCharge||0, deliveryCity: data.deliveryCity||"", deliveryPincode: data.deliveryPincode||"",
     createdAt: nowIso()
   });
   await db.collection("stockLog").add({
@@ -1039,6 +1075,7 @@ async function recordSale(data){
   });
   if(data.customer && data.customer.trim()) addCustomerQuick(data.customer.trim());
   toast("Sale recorded.", "success");
+  if(data.exhibitionId) await recalculateExhibitionAllocation(data.exhibitionId);
 }
 async function updateSale(sale, data){
   if(state.dbOffline){ toast("Please log in first.", "error"); return; }
@@ -1049,10 +1086,13 @@ async function updateSale(sale, data){
   await db.doc("inventory/"+item.id).update({stock:newStock});
   var total = data.qty*data.unitPrice;
   var discount = Math.max(0, data.qty*((data.listPrice||data.unitPrice)-data.unitPrice));
+  var exh = data.exhibitionId ? state.exhibitions.find(function(e){return e.id===data.exhibitionId;}) : null;
   await db.doc("sales/"+sale.id).update({
     date:data.date, channel:data.channel, qty:data.qty, paymentMethod:data.paymentMethod||"Cash",
     listPriceAtSale:data.listPrice||data.unitPrice, unitPrice:data.unitPrice, discount:discount,
-    totalPrice:total, customer:data.customer||"", notes:data.notes||""
+    totalPrice:total, customer:data.customer||"", notes:data.notes||"",
+    exhibitionId: data.exhibitionId||"", exhibitionName: exh ? exh.name : "",
+    deliveryCharge: data.deliveryCharge||0, deliveryCity: data.deliveryCity||"", deliveryPincode: data.deliveryPincode||""
   });
   var logEntry = state.stockLog.find(function(l){ return l.refType==="sale" && l.refId===sale.id; });
   if(logEntry){
@@ -1060,6 +1100,10 @@ async function updateSale(sale, data){
   }
   if(data.customer && data.customer.trim()) addCustomerQuick(data.customer.trim());
   toast("Sale updated.", "success");
+  var oldExh = sale.exhibitionId || "";
+  var newExh = data.exhibitionId || "";
+  if(oldExh && oldExh!==newExh) await recalculateExhibitionAllocation(oldExh);
+  if(newExh) await recalculateExhibitionAllocation(newExh);
 }
 async function deleteSale(s){
   if(state.dbOffline) return;
@@ -1070,8 +1114,38 @@ async function deleteSale(s){
   }
   var logEntry = state.stockLog.find(function(l){ return l.refType==="sale" && l.refId===s.id; });
   if(logEntry) await db.doc("stockLog/"+logEntry.id).delete();
+  if(s.exhibitionId) await recalculateExhibitionAllocation(s.exhibitionId, s.id);
   await db.doc("sales/"+s.id).delete();
   toast("Sale deleted and stock restored.", "success");
+}
+/* Whenever sales tied to an exhibition change (added/edited/deleted), or the
+   exhibition's own charges are edited, this re-splits the stall + additional
+   charge evenly across every saree currently sold there, and writes the
+   result straight into each piece's cost price, its original purchase
+   record, and the sale's own profit figure — so Purchases, Reports and
+   profit all stay in sync automatically, with nothing double-counted
+   because it always starts from each item's untouched baseCostPrice. */
+async function recalculateExhibitionAllocation(exhibitionId, excludeSaleId){
+  if(!exhibitionId || state.dbOffline) return;
+  var exh = state.exhibitions.find(function(e){return e.id===exhibitionId;});
+  if(!exh) return;
+  var salesHere = state.sales.filter(function(s){return s.exhibitionId===exhibitionId && s.id!==excludeSaleId;});
+  var soldCount = salesHere.length;
+  var totalCharge = (exh.stallCharge||0) + (exh.additionalCharge||0);
+  var perPieceShare = soldCount>0 ? totalCharge/soldCount : 0;
+  for(var i=0;i<salesHere.length;i++){
+    var sale = salesHere[i];
+    var item = findItem(sale.itemId);
+    if(!item) continue;
+    var base = (item.baseCostPrice!=null) ? item.baseCostPrice : (item.costPrice||0);
+    var newCost = Math.round((base + perPieceShare)*100)/100;
+    await db.doc("inventory/"+item.id).update({costPrice:newCost, baseCostPrice:base});
+    var purchase = state.purchases.filter(function(p){return p.itemId===item.id;})[0];
+    if(purchase){
+      await db.doc("purchases/"+purchase.id).update({unitCost:newCost, totalCost:newCost});
+    }
+    await db.doc("sales/"+sale.id).update({costPriceAtSale:newCost});
+  }
 }
 
 async function recordAdjustment(data){
@@ -1224,13 +1298,14 @@ $("#drawerOverlay").addEventListener("click", function(e){
 });
 
 function renderDrawer(){
-  var titles = {home:"Menu", business:"Business details", categories:"Manage categories", wholesalers:"Manage wholesalers", customers:"Manage customers", access:"Manage access"};
+  var titles = {home:"Menu", business:"Business details", categories:"Manage categories", wholesalers:"Manage wholesalers", customers:"Manage customers", exhibitions:"Manage exhibitions", access:"Manage access"};
   $("#drawerTitle").textContent = titles[currentDrawerView] || "Menu";
   if(currentDrawerView==="home") return renderDrawerHome();
   if(currentDrawerView==="business") return renderDrawerBusiness();
   if(currentDrawerView==="categories") return renderDrawerCategories();
   if(currentDrawerView==="wholesalers") return renderDrawerWholesalers();
   if(currentDrawerView==="customers") return renderDrawerCustomers();
+  if(currentDrawerView==="exhibitions") return renderDrawerExhibitions();
   if(currentDrawerView==="access") return renderDrawerAccess();
 }
 function backButtonHtml(){
@@ -1249,6 +1324,7 @@ function renderDrawerHome(){
       '<button class="drawer-nav-btn" data-nav="categories">Manage categories<span class="arrow">›</span></button>'+
       '<button class="drawer-nav-btn" data-nav="wholesalers">Manage wholesalers<span class="arrow">›</span></button>'+
       '<button class="drawer-nav-btn" data-nav="customers">Manage customers<span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" data-nav="exhibitions">Manage exhibitions<span class="arrow">›</span></button>'+
       (currentMemberRole==="owner" ? '<button class="drawer-nav-btn" data-nav="access">Manage access<span class="arrow">›</span></button>' : '')+
     '</div>'+
     '<div class="drawer-section">'+
@@ -1441,6 +1517,83 @@ function renderDrawerCustomers(){
   });
 }
 
+function openExhibitionEditor(existing, onCreated){
+  var ex = existing || {name:"", location:"", date:todayStr(), stallCharge:"", additionalCharge:""};
+  openMini(
+    '<h3>'+(existing?'Edit exhibition':'Add exhibition')+'</h3>'+
+    '<div class="form-grid">'+
+      '<div class="field full"><label>Name</label><input id="ex_name" value="'+escapeHtml(ex.name||"")+'" placeholder="e.g. Diwali Mela, City Hall"></div>'+
+      '<div class="field"><label>Location</label><input id="ex_location" value="'+escapeHtml(ex.location||"")+'" placeholder="e.g. Bengaluru"></div>'+
+      '<div class="field"><label>Date</label><input id="ex_date" type="date" value="'+(ex.date||todayStr())+'"></div>'+
+      '<div class="field"><label>Stall charge (₹)</label><input id="ex_stall" type="number" min="0" step="1" value="'+(ex.stallCharge===""||ex.stallCharge===undefined?"":ex.stallCharge)+'"></div>'+
+      '<div class="field"><label>Additional charge (₹)</label><input id="ex_additional" type="number" min="0" step="1" value="'+(ex.additionalCharge===""||ex.additionalCharge===undefined?"":ex.additionalCharge)+'"></div>'+
+    '</div>'+
+    '<p class="hint">Both charges are split evenly across whatever sells at this exhibition, and baked automatically into each sold saree\'s cost price and your reports.</p>'+
+    '<div class="modal-actions">'+
+      '<button class="btn ghost" id="ex_cancel">Cancel</button>'+
+      '<button class="btn" id="ex_save">'+(existing?'Save changes':'Add exhibition')+'</button>'+
+    '</div>'
+  );
+  $("#ex_cancel").addEventListener("click", closeMini);
+  $("#ex_save").addEventListener("click", async function(){
+    var name = $("#ex_name").value.trim();
+    if(!name){ toast("Exhibition name is required.", "error"); return; }
+    if(state.dbOffline){ toast("Please log in first.", "error"); return; }
+    var data = {
+      name:name, location:$("#ex_location").value.trim(), date:$("#ex_date").value||todayStr(),
+      stallCharge:Number($("#ex_stall").value)||0, additionalCharge:Number($("#ex_additional").value)||0
+    };
+    closeMini();
+    if(existing){
+      await db.doc("exhibitions/"+existing.id).update(data);
+      toast("Exhibition updated — reallocating costs…", "success");
+      await recalculateExhibitionAllocation(existing.id);
+    } else {
+      data.createdAt = nowIso();
+      var newRef = await db.collection("exhibitions").add(data);
+      toast("Exhibition added.", "success");
+      if(onCreated) onCreated(newRef.id, data);
+    }
+  });
+}
+function renderDrawerExhibitions(){
+  var rows = state.exhibitions.map(function(e){
+    var soldCount = state.sales.filter(function(s){return s.exhibitionId===e.id;}).length;
+    return '<div class="chip-row"><span>'+escapeHtml(e.name)+
+        ' <span class="muted">('+(e.date||"")+(e.location?(" · "+escapeHtml(e.location)):"")+' · '+soldCount+' sold)</span></span>'+
+      '<div class="chip-actions">'+
+        '<button data-editex="'+e.id+'" title="Edit">Edit</button>'+
+        '<button data-delex="'+e.id+'" title="Delete">Delete</button>'+
+      '</div></div>';
+  }).join("");
+  $("#drawerBody").innerHTML = backButtonHtml() +
+    '<div class="drawer-section">'+
+      '<h4>Exhibitions</h4>'+
+      '<p class="desc">Set up each exhibition once with its stall and additional charges. Pick it when recording a sale from there, and the cost per saree updates automatically as more sell.</p>'+
+      '<div class="chip-list">'+(rows || '<span class="hint">No exhibitions added yet.</span>')+'</div>'+
+      '<button class="btn small" id="btnAddExhibition">+ Add exhibition</button>'+
+    '</div>';
+  wireBack();
+  $("#btnAddExhibition").addEventListener("click", function(){ openExhibitionEditor(null); });
+  $all("[data-editex]", $("#drawerBody")).forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var e = state.exhibitions.filter(function(x){return x.id===btn.dataset.editex;})[0];
+      if(e) openExhibitionEditor(e);
+    });
+  });
+  $all("[data-delex]", $("#drawerBody")).forEach(function(btn){
+    btn.addEventListener("click", async function(){
+      var e = state.exhibitions.filter(function(x){return x.id===btn.dataset.delex;})[0];
+      if(!e) return;
+      var soldCount = state.sales.filter(function(s){return s.exhibitionId===e.id;}).length;
+      var msg = soldCount ? ('"'+e.name+'" has '+soldCount+' sale(s) linked to it. Those sales will keep their last-calculated cost, but won\'t update anymore. Delete anyway?') : ('Delete "'+e.name+'"?');
+      if(!(await appConfirm(msg, {title:"Delete exhibition?", confirmLabel:"Delete", danger:true}))) return;
+      await db.doc("exhibitions/"+e.id).delete();
+      toast("Exhibition deleted.", "success");
+    });
+  });
+}
+
 function renderDrawerAccess(){
   var myEmail = ((auth.currentUser && auth.currentUser.email) || "").toLowerCase();
   var rows = state.members.map(function(m){
@@ -1598,10 +1751,27 @@ function itemOptions(selectedId){
     return '<option value="'+i.id+'"'+(i.id===selectedId?' selected':'')+'>'+escapeHtml(i.name)+' — stock '+fmtNum(i.stock)+'</option>';
   }).join("");
 }
-function itemChoices(categoryFilter){
+function itemChoices(categoryFilter, onlyInStock, subcategoryFilter){
   var items = state.inventory;
+  if(onlyInStock) items = items.filter(function(i){ return (i.stock||0)>0; });
   if(categoryFilter) items = items.filter(function(i){ return i.category===categoryFilter; });
-  return items.map(function(i){ return {value:i.id, label:i.name+" — stock "+fmtNum(i.stock)}; });
+  if(subcategoryFilter) items = items.filter(function(i){ return i.subcategory===subcategoryFilter; });
+  return items.map(function(i){
+    var bits = [];
+    if(i.category) bits.push(i.category);
+    if(i.subcategory) bits.push(i.subcategory);
+    if(!i.category && !i.subcategory) bits.push(i.name);
+    if(i.color) bits.push(i.color);
+    var label = bits.join(" — ") + (i.sku ? " ["+i.sku+"]" : "");
+    return {value:i.id, label:label};
+  });
+}
+function subcategoriesFor(category){
+  var set = {};
+  state.inventory.forEach(function(i){
+    if(i.subcategory && (!category || i.category===category)) set[i.subcategory] = true;
+  });
+  return Object.keys(set).sort();
 }
 function categoryFilterOptionsHtml(){
   var list = state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES;
@@ -1744,6 +1914,7 @@ function openItemModal(existing){
       '</div>'+
       '<div class="field"><label>Name</label><input id="f_name" value="'+escapeHtml(it.name||"")+'" placeholder="e.g. Red Banarasi Silk"></div>'+
       '<div class="field"><label>Category</label>'+freeComboHtml("f_category", it.category||"", "Tap to choose or type new")+'</div>'+
+      '<div class="field"><label>Subcategory</label>'+freeComboHtml("f_subcategory", it.subcategory||"", "e.g. Ajrak Handblock")+'</div>'+
       '<div class="field"><label>Color</label><input id="f_color" value="'+escapeHtml(it.color||"")+'" placeholder="e.g. Maroon"></div>'+
       '<div class="field"><label>Wholesaler / source</label>'+freeComboHtml("f_wholesaler", it.wholesaler||"", "Supplier name")+'</div>'+
       '<div class="field"><label>Cost price (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+(it.costPrice!==undefined?it.costPrice:"")+'"></div>'+
@@ -1761,6 +1932,7 @@ function openItemModal(existing){
   );
   $("#f_cancel").addEventListener("click", closeModal);
   wireFreeCombo("f_category", function(){ return state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES; });
+  wireFreeCombo("f_subcategory", function(){ return subcategoriesFor($("#f_category").value.trim()); });
   wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
   $("#f_photo").addEventListener("change", async function(e){
     var file = e.target.files[0];
@@ -1803,8 +1975,8 @@ function openItemModal(existing){
     var categoryVal = $("#f_category").value.trim();
     if(categoryVal) addCategoryQuick(categoryVal);
     var data = {
-      name:name, category:categoryVal, color:$("#f_color").value.trim(),
-      wholesaler:$("#f_wholesaler").value.trim(), costPrice:Number($("#f_cost").value)||0,
+      name:name, category:categoryVal, subcategory:$("#f_subcategory").value.trim(), color:$("#f_color").value.trim(),
+      wholesaler:$("#f_wholesaler").value.trim(), costPrice:Number($("#f_cost").value)||0, baseCostPrice:Number($("#f_cost").value)||0,
       sellingPrice:Number($("#f_price").value)||0, stock:Number($("#f_stock").value)||0,
       reorderLevel:Number($("#f_reorder").value)||0, sku:$("#f_sku").value.trim()||genSku(name),
       notes:$("#f_notes").value.trim(), photoData: pendingPhotoData
@@ -1814,43 +1986,147 @@ function openItemModal(existing){
   });
 }
 
+/* ---- purchase line editor (mini form for one category/subcategory + colors within a batch purchase) ---- */
+function openPurchaseLineEditor(existingLine, onSave){
+  var line = existingLine ? {
+    category: existingLine.category, subcategory: existingLine.subcategory,
+    baseCost: existingLine.baseCost, basePrice: existingLine.basePrice,
+    qty: existingLine.qty || existingLine.colors.length || 1,
+    colors: existingLine.colors.slice()
+  } : {category:"", subcategory:"", baseCost:"", basePrice:"", qty:1, colors:[]};
+
+  openMini(
+    '<h3>'+(existingLine?'Edit item':'Add item to this purchase')+'</h3>'+
+    '<div class="form-grid">'+
+      '<div class="field"><label>Category</label>'+freeComboHtml("pl_category", line.category, "Tap to choose or type new")+'</div>'+
+      '<div class="field"><label>Subcategory</label>'+freeComboHtml("pl_subcategory", line.subcategory, "e.g. Ajrak Handblock")+'</div>'+
+      '<div class="field"><label>Quantity (pieces)</label><input id="pl_qty" type="number" min="1" step="1" value="'+line.qty+'"></div>'+
+      '<div class="field"><label>Cost price per piece (₹)</label><input id="pl_cost" type="number" min="0" step="1" value="'+(line.baseCost===""||line.baseCost===undefined?"":line.baseCost)+'"></div>'+
+      '<div class="field"><label>Selling price per piece (₹)</label><input id="pl_price" type="number" min="0" step="1" value="'+(line.basePrice===""||line.basePrice===undefined?"":line.basePrice)+'"></div>'+
+      '<div class="field full"><label>Colors (optional — for your own reading, not required)</label><div id="pl_colors"></div>'+
+        '<button type="button" class="btn ghost small" id="pl_addcolor" style="margin-top:2px;width:fit-content;">+ Add a color</button>'+
+        '<span class="hint">Leave this empty if you don\'t want to note colors — the quantity above is all that\'s required.</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn ghost" id="pl_cancel">Cancel</button>'+
+      '<button class="btn" id="pl_save">'+(existingLine?'Save changes':'Add to purchase')+'</button>'+
+    '</div>'
+  );
+  wireFreeCombo("pl_category", function(){ return state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES; });
+  wireFreeCombo("pl_subcategory", function(){ return subcategoriesFor($("#pl_category").value.trim()); });
+
+  function renderColorRows(){
+    var wrap = document.getElementById("pl_colors");
+    if(!wrap) return;
+    if(line.colors.length===0){
+      wrap.innerHTML = '<span class="hint">No colors noted yet — that\'s fine.</span>';
+      return;
+    }
+    wrap.innerHTML = line.colors.map(function(c, idx){
+      return '<div style="display:flex;gap:6px;margin-bottom:6px;">'+
+        '<input type="text" class="pl_color_input" data-idx="'+idx+'" value="'+escapeHtml(c)+'" placeholder="e.g. Maroon" style="flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;">'+
+        '<button type="button" class="btn ghost small pl_color_remove" data-idx="'+idx+'">✕</button>'+
+      '</div>';
+    }).join("");
+    $all(".pl_color_input", wrap).forEach(function(inp){
+      inp.addEventListener("input", function(){ line.colors[Number(this.dataset.idx)] = this.value; });
+    });
+    $all(".pl_color_remove", wrap).forEach(function(btn){
+      btn.addEventListener("click", function(){ line.colors.splice(Number(this.dataset.idx),1); renderColorRows(); });
+    });
+  }
+  renderColorRows();
+  $("#pl_addcolor").addEventListener("click", function(){ line.colors.push(""); renderColorRows(); });
+  $("#pl_cancel").addEventListener("click", closeMini);
+  $("#pl_save").addEventListener("click", async function(){
+    var category = $("#pl_category").value.trim();
+    var subcategory = $("#pl_subcategory").value.trim();
+    var qty = Number($("#pl_qty").value);
+    var cost = Number($("#pl_cost").value);
+    var price = Number($("#pl_price").value)||0;
+    var colors = line.colors.map(function(c){return (c||"").trim();});
+    if(!category){ toast("Category is required.", "error"); return; }
+    if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
+    if(!cost || $("#pl_cost").value===""){ toast("Enter a cost price per piece.", "error"); return; }
+    if(category) addCategoryQuick(category);
+    closeMini();
+    onSave({category:category, subcategory:subcategory, baseCost:cost, basePrice:price, qty:qty, colors:colors});
+  });
+}
+
+/* Creates one inventory piece (unique SKU, stock 1) + one purchase record +
+   one stock-log entry per color across every line in a batch purchase,
+   splitting any shared additional cost (transport/porter) evenly across
+   every piece so it's baked into each piece's cost price automatically. */
+async function recordBatchLines(lines, meta, additionalCost){
+  if(state.dbOffline){ toast("Please log in first.", "error"); return 0; }
+  var totalPieces = lines.reduce(function(s,l){return s+(l.qty||l.colors.length||0);}, 0);
+  var perPieceExtra = totalPieces>0 ? (additionalCost||0)/totalPieces : 0;
+  var created = 0;
+  for(var li=0; li<lines.length; li++){
+    var line = lines[li];
+    var pieceCount = line.qty || line.colors.length || 0;
+    var displayName = line.category + (line.subcategory ? (" "+line.subcategory) : "");
+    for(var ci=0; ci<pieceCount; ci++){
+      var color = (line.colors[ci]||"").trim();
+      var finalCost = Math.round(((line.baseCost||0) + perPieceExtra)*100)/100;
+      var ref = await db.collection("inventory").add({
+        name: displayName, sku: genSku(line.subcategory||line.category), category: line.category,
+        subcategory: line.subcategory||"", color: color, wholesaler: meta.wholesaler,
+        costPrice: finalCost, baseCostPrice: line.baseCost||0, sellingPrice: line.basePrice||0, stock: 1, reorderLevel: 0,
+        notes:"", photoData:null, createdAt: nowIso()
+      });
+      var pRef = await db.collection("purchases").add({
+        date: meta.date, wholesaler: meta.wholesaler, itemId: ref.id,
+        itemName: displayName+(color?(" — "+color):""),
+        qty: 1, unitCost: finalCost, totalCost: finalCost,
+        notes: (perPieceExtra ? ("Includes ₹"+perPieceExtra.toFixed(0)+" share of this purchase's additional cost. ") : "")+(meta.notes||""),
+        createdAt: nowIso()
+      });
+      await db.collection("stockLog").add({
+        date: meta.date, type:"in", itemId: ref.id, itemName: displayName, qty:1,
+        reason:"Purchase", detail: meta.wholesaler, refType:"purchase", refId: pRef.id, createdAt: nowIso()
+      });
+      created++;
+    }
+  }
+  return created;
+}
+
 /* ---- purchase modal ---- */
 function openPurchaseModal(existingPurchase){
   var isEdit = !!existingPurchase;
   var hasItems = state.inventory.length>0;
   var mode = isEdit ? "existing" : (hasItems ? "existing" : "new");
   var editItem = isEdit ? findItem(existingPurchase.itemId) : null;
+  var purchaseLines = [];
+
   openModal(
     '<h3>'+(isEdit?'Edit purchase':'Record purchase')+'</h3>'+
     (isEdit ? '<p class="hint" style="margin:-4px 0 10px 0;">Item: <strong>'+escapeHtml(existingPurchase.itemName)+'</strong> (can\'t be changed — delete and re-add if it was the wrong item)</p>' :
     '<div class="report-tabs" id="purModeToggle" style="margin-bottom:4px;">'+
       '<button type="button" data-mode="existing"'+(!hasItems?' disabled style="opacity:0.4;cursor:not-allowed;"':'')+' class="'+(mode==="existing"?"active":"")+'">Existing item</button>'+
-      '<button type="button" data-mode="new" class="'+(mode==="new"?"active":"")+'">New item</button>'+
+      '<button type="button" data-mode="new" class="'+(mode==="new"?"active":"")+'">New batch</button>'+
     '</div>')+
     '<div class="form-grid">'+
       '<div class="field full" id="grpExisting" style="'+(mode==="existing"?"":"display:none;")+'">'+
-        '<label>Item</label>'+searchableSelectHtml("f_item", itemChoices(), isEdit?existingPurchase.itemId:"", "Type an item name…")+
-      '</div>'+
-      '<div class="field" id="grpNewName" style="'+(mode==="new"?"":"display:none;")+'">'+
-        '<label>Saree name</label><input id="f_newname" placeholder="e.g. Red Banarasi Silk">'+
-      '</div>'+
-      '<div class="field" id="grpNewCategory" style="'+(mode==="new"?"":"display:none;")+'">'+
-        '<label>Category</label>'+freeComboHtml("f_newcategory", "", "Tap to choose or type new")+
-      '</div>'+
-      '<div class="field" id="grpNewColor" style="'+(mode==="new"?"":"display:none;")+'">'+
-        '<label>Color</label><input id="f_newcolor" placeholder="e.g. Maroon">'+
-      '</div>'+
-      '<div class="field" id="grpNewPrice" style="'+(mode==="new"?"":"display:none;")+'">'+
-        '<label>Selling price (₹)</label><input id="f_newprice" type="number" min="0" step="1">'+
-      '</div>'+
-      '<div class="field" id="grpNewReorder" style="'+(mode==="new"?"":"display:none;")+'">'+
-        '<label>Reorder level</label><input id="f_newreorder" type="number" min="0" step="1" value="2">'+
+        '<label>Item</label>'+searchableSelectHtml("f_item", function(){return itemChoices();}, isEdit?existingPurchase.itemId:"", "Type an item name…")+
       '</div>'+
       '<div class="field"><label>Wholesaler</label>'+freeComboHtml("f_wholesaler", isEdit?(existingPurchase.wholesaler||""):"", "Supplier name")+'</div>'+
       '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingPurchase.date:todayStr())+'"></div>'+
-      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingPurchase.qty:1)+'"></div>'+
-      '<div class="field"><label>Unit cost (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+(isEdit?existingPurchase.unitCost:"")+'"></div>'+
+      '<div class="field" id="grpQty" style="'+(mode==="new"?"display:none;":"")+'"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingPurchase.qty:1)+'"></div>'+
+      '<div class="field" id="grpUnitCost" style="'+(mode==="new"?"display:none;":"")+'"><label>Unit cost (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+(isEdit?existingPurchase.unitCost:"")+'"></div>'+
       '<div class="field full" id="grpUpdateCost" style="'+(mode==="new"?"display:none;":"")+'"><label><input type="checkbox" id="f_updatecost"'+(isEdit?"":" checked")+' style="width:auto;display:inline-block;margin-right:6px;">Update this item\'s cost price to match</label></div>'+
+      '<div class="field full" id="grpBatch" style="'+(mode==="new"?"":"display:none;")+'">'+
+        '<label>Additional cost for this purchase — transport, porter, etc. (₹, optional)</label>'+
+        '<input id="f_additional" type="number" min="0" step="1" value="0">'+
+        '<span class="hint">Split evenly across every piece below and baked straight into each one\'s cost price.</span>'+
+      '</div>'+
+      '<div class="field full" id="grpLines" style="'+(mode==="new"?"":"display:none;")+'">'+
+        '<div id="linesList"></div>'+
+        '<button type="button" class="btn secondary small" id="btnAddLine" style="margin-top:8px;">+ Add item to this purchase</button>'+
+      '</div>'+
       '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(isEdit?(existingPurchase.notes||""):"")+'</textarea></div>'+
     '</div>'+
     '<div class="modal-actions">'+
@@ -1860,19 +2136,51 @@ function openPurchaseModal(existingPurchase){
   );
   var wField = $("#f_wholesaler");
   wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
-  if(!isEdit){
-    wireFreeCombo("f_newcategory", function(){ return state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES; });
+
+  function renderLinesList(){
+    var wrap = $("#linesList");
+    if(purchaseLines.length===0){
+      wrap.innerHTML = '<div class="empty" style="padding:14px 10px;">No items added yet.</div>';
+      return;
+    }
+    var totalPieces = purchaseLines.reduce(function(s,l){return s+(l.qty||l.colors.length||0);},0);
+    wrap.innerHTML = purchaseLines.map(function(l, idx){
+      var qty = l.qty || l.colors.length || 0;
+      var subtotal = qty * (l.baseCost||0);
+      return '<div class="chip-row"><span>'+escapeHtml(l.category)+(l.subcategory?(' — '+escapeHtml(l.subcategory)):'')+
+        ' <span class="muted">('+qty+' pc'+(qty===1?'':'s')+' · '+fmtMoney(subtotal)+')</span></span>'+
+        '<div class="chip-actions"><button data-editline="'+idx+'" title="Edit">Edit</button><button data-delline="'+idx+'" title="Delete">Delete</button></div></div>';
+    }).join("") + '<p class="hint" style="margin-top:8px;">Total: '+fmtNum(totalPieces)+' piece(s) across '+purchaseLines.length+' item(s)</p>';
+    $all("[data-editline]", wrap).forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var idx = Number(btn.dataset.editline);
+        openPurchaseLineEditor(purchaseLines[idx], function(updated){ purchaseLines[idx]=updated; renderLinesList(); });
+      });
+    });
+    $all("[data-delline]", wrap).forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        var idx = Number(btn.dataset.delline);
+        if(await appConfirm("Remove this item from the purchase?", {title:"Remove item?", confirmLabel:"Remove", danger:true})){
+          purchaseLines.splice(idx,1); renderLinesList();
+        }
+      });
+    });
   }
+  if(!isEdit){ renderLinesList(); }
+  $("#btnAddLine").addEventListener("click", function(){
+    openPurchaseLineEditor(null, function(newLine){ purchaseLines.push(newLine); renderLinesList(); });
+  });
 
   if(!isEdit){
     function setMode(m){
       mode = m;
       $all("#purModeToggle button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode===m); });
       $("#grpExisting").style.display = m==="existing" ? "" : "none";
-      ["grpNewName","grpNewCategory","grpNewColor","grpNewPrice","grpNewReorder"].forEach(function(id){
-        $("#"+id).style.display = m==="new" ? "" : "none";
-      });
-      $("#grpUpdateCost").style.display = m==="new" ? "none" : "";
+      $("#grpQty").style.display = m==="existing" ? "" : "none";
+      $("#grpUnitCost").style.display = m==="existing" ? "" : "none";
+      $("#grpUpdateCost").style.display = m==="existing" ? "" : "none";
+      $("#grpBatch").style.display = m==="new" ? "" : "none";
+      $("#grpLines").style.display = m==="new" ? "" : "none";
     }
     $all("#purModeToggle button").forEach(function(b){
       b.addEventListener("click", function(){
@@ -1883,7 +2191,7 @@ function openPurchaseModal(existingPurchase){
   }
 
   if(!isEdit){
-    wireSearchableSelect("f_item", itemChoices(), function(itemId){
+    wireSearchableSelect("f_item", function(){return itemChoices();}, function(itemId){
       var it = findItem(itemId);
       if(it && it.wholesaler && !wField.value) wField.value = it.wholesaler;
       if(it) $("#f_cost").value = it.costPrice||"";
@@ -1893,30 +2201,29 @@ function openPurchaseModal(existingPurchase){
 
   $("#f_cancel").addEventListener("click", closeModal);
   $("#f_save").addEventListener("click", async function(){
-    var qty = Number($("#f_qty").value);
-    var unitCost = Number($("#f_cost").value);
-    if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
-    if(unitCost<0 || $("#f_cost").value===""){ toast("Enter a unit cost.", "error"); return; }
     if(!(await validateTxnDate($("#f_date").value))) return;
     var wholesaler = wField.value.trim(), date = $("#f_date").value||todayStr(), notes = $("#f_notes").value.trim();
 
     if(isEdit){
+      var qty = Number($("#f_qty").value);
+      var unitCost = Number($("#f_cost").value);
+      if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
+      if(unitCost<0 || $("#f_cost").value===""){ toast("Enter a unit cost.", "error"); return; }
       await updatePurchase(existingPurchase, {qty:qty, unitCost:unitCost, date:date, wholesaler:wholesaler, notes:notes, updateCost:$("#f_updatecost").checked});
     } else if(mode==="new"){
-      var name = $("#f_newname").value.trim();
-      if(!name){ toast("Enter the saree's name.", "error"); return; }
-      var newCat = $("#f_newcategory").value.trim();
-      if(newCat) addCategoryQuick(newCat);
-      await recordPurchaseWithNewItem({
-        name:name, sku:genSku(name), category:newCat, color:$("#f_newcolor").value.trim(),
-        sellingPrice:Number($("#f_newprice").value)||0, reorderLevel:Number($("#f_newreorder").value)||0
-      }, {qty:qty, unitCost:unitCost, date:date, wholesaler:wholesaler, notes:notes});
-      toast("New item added and purchase recorded.", "success");
+      if(purchaseLines.length===0){ toast("Add at least one item to this purchase.", "error"); return; }
+      var additional = Number($("#f_additional").value)||0;
+      var created = await recordBatchLines(purchaseLines, {wholesaler:wholesaler, date:date, notes:notes}, additional);
+      toast(created+" piece(s) added to inventory.", "success");
     } else {
+      var qty2 = Number($("#f_qty").value);
+      var unitCost2 = Number($("#f_cost").value);
+      if(!qty2 || qty2<=0){ toast("Enter a valid quantity.", "error"); return; }
+      if(unitCost2<0 || $("#f_cost").value===""){ toast("Enter a unit cost.", "error"); return; }
       if(!$("#f_item").value){ toast("Choose an item.", "error"); return; }
       await recordPurchase({
         itemId:$("#f_item").value, wholesaler:wholesaler, date:date,
-        qty:qty, unitCost:unitCost, updateCost:$("#f_updatecost").checked, notes:notes
+        qty:qty2, unitCost:unitCost2, updateCost:$("#f_updatecost").checked, notes:notes
       });
     }
     closeModal();
@@ -1929,14 +2236,29 @@ function openSaleModal(existingSale){
   if(!isEdit && state.inventory.length===0){ toast("Add an inventory item first.", "error"); return; }
   var editItem = isEdit ? findItem(existingSale.itemId) : null;
   var saleCategoryFilter = "";
+  var saleSubcategoryFilter = "";
   openModal(
     '<h3>'+(isEdit?'Edit sale':'Record sale')+'</h3>'+
     (isEdit ? '<p class="hint" style="margin:-4px 0 10px 0;">Item: <strong>'+escapeHtml(existingSale.itemName)+'</strong> (can\'t be changed — delete and re-add if it was the wrong item)</p>' : '')+
     '<div class="form-grid">'+
-      (isEdit ? '' : '<div class="field full"><label>Filter by category (optional)</label><select id="f_categoryfilter">'+categoryFilterOptionsHtml()+'</select></div>')+
-      (isEdit ? '' : '<div class="field full"><label>Item</label>'+searchableSelectHtml("f_item", function(){return itemChoices(saleCategoryFilter);}, "", "Type an item name…")+'</div>')+
+      (isEdit ? '' : '<div class="field"><label>Filter by category (optional)</label><select id="f_categoryfilter">'+categoryFilterOptionsHtml()+'</select></div>')+
+      (isEdit ? '' : '<div class="field"><label>Filter by subcategory (optional)</label><select id="f_subcategoryfilter"><option value="">All subcategories</option></select></div>')+
+      (isEdit ? '' : '<div class="field full"><label>Item</label>'+searchableSelectHtml("f_item", function(){return itemChoices(saleCategoryFilter, true, saleSubcategoryFilter);}, "", "Type an item name…")+'</div>')+
       '<div class="field"><label>Channel</label><select id="f_channel">'+CHANNELS.map(function(c){return '<option'+(isEdit&&existingSale.channel===c?' selected':'')+'>'+c+'</option>';}).join("")+'</select></div>'+
       '<div class="field"><label>Payment method</label><select id="f_payment">'+PAYMENT_METHODS.map(function(p){return '<option'+(isEdit&&existingSale.paymentMethod===p?' selected':'')+'>'+p+'</option>';}).join("")+'</select></div>'+
+      '<div class="field full" id="grpExhibition" style="display:none;">'+
+        '<label>Exhibition</label>'+
+        '<div style="display:flex;gap:6px;">'+
+          '<select id="f_exhibition" style="flex:1;"><option value="">— Select exhibition —</option>'+
+            state.exhibitions.map(function(e){return '<option value="'+e.id+'"'+(isEdit&&existingSale.exhibitionId===e.id?' selected':'')+'>'+escapeHtml(e.name)+(e.date?(' — '+e.date):'')+'</option>';}).join("")+
+          '</select>'+
+          '<button type="button" class="btn ghost small" id="btnQuickExhibition" style="white-space:nowrap;">+ New</button>'+
+        '</div>'+
+        '<span class="hint">The stall + additional charge for whichever exhibition you pick here gets split across everything sold there, automatically.</span>'+
+      '</div>'+
+      '<div class="field" id="grpDeliveryCharge" style="display:none;"><label>Delivery charge (₹)</label><input id="f_deliverycharge" type="number" min="0" step="1" value="'+(isEdit&&existingSale.deliveryCharge?existingSale.deliveryCharge:"")+'"></div>'+
+      '<div class="field" id="grpDeliveryCity" style="display:none;"><label>Delivery town/city</label><input id="f_deliverycity" value="'+escapeHtml(isEdit?(existingSale.deliveryCity||""):"")+'" placeholder="e.g. Pune"></div>'+
+      '<div class="field" id="grpDeliveryPincode" style="display:none;"><label>Pincode</label><input id="f_deliverypincode" value="'+escapeHtml(isEdit?(existingSale.deliveryPincode||""):"")+'" placeholder="e.g. 411001"></div>'+
       '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingSale.date:todayStr())+'"></div>'+
       '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingSale.qty:1)+'"></div>'+
       '<div class="field"><label>List price (₹)</label><input id="f_listprice" type="number" min="0" step="1" value="'+(isEdit?existingSale.listPriceAtSale:"")+'"></div>'+
@@ -1966,15 +2288,32 @@ function openSaleModal(existingSale){
     if(it){
       $("#f_listprice").value = it.sellingPrice||0;
       if(!isEdit) $("#f_price").value = it.sellingPrice||"";
-      $("#f_stockhint").textContent = "Category: "+(it.category||"—")+" · Current stock: "+fmtNum(it.stock)+" · Cost price: "+fmtMoney(it.costPrice);
+      $("#f_stockhint").textContent = "Category: "+(it.category||"—")+(it.subcategory?(" / "+it.subcategory):"")+(it.color?(" · Color: "+it.color):"")+" · SKU: "+(it.sku||"—")+" · Current stock: "+fmtNum(it.stock)+" · Cost price: "+fmtMoney(it.costPrice);
     }
     updateDiscountHint();
   }
   if(!isEdit){
-    wireSearchableSelect("f_item", function(){return itemChoices(saleCategoryFilter);}, function(itemId){ syncItem(itemId); });
+    wireSearchableSelect("f_item", function(){return itemChoices(saleCategoryFilter, true, saleSubcategoryFilter);}, function(itemId){ syncItem(itemId); });
+    function refreshSubcategoryFilterOptions(){
+      var el = $("#f_subcategoryfilter");
+      var subs = subcategoriesFor(saleCategoryFilter);
+      el.innerHTML = '<option value="">All subcategories</option>'+subs.map(function(s){return '<option'+(s===saleSubcategoryFilter?' selected':'')+'>'+escapeHtml(s)+'</option>';}).join("");
+      if(subs.indexOf(saleSubcategoryFilter)<0) saleSubcategoryFilter = "";
+    }
+    refreshSubcategoryFilterOptions();
     $("#f_categoryfilter").addEventListener("change", function(){
       saleCategoryFilter = this.value;
-      refreshSearchableSelectOptions("f_item", function(){return itemChoices(saleCategoryFilter);});
+      saleSubcategoryFilter = "";
+      refreshSubcategoryFilterOptions();
+      refreshSearchableSelectOptions("f_item", function(){return itemChoices(saleCategoryFilter, true, saleSubcategoryFilter);});
+      $("#f_item_q").value = "";
+      $("#f_item").value = "";
+      $("#f_stockhint").textContent = "";
+      $("#f_listprice").value = "";
+    });
+    $("#f_subcategoryfilter").addEventListener("change", function(){
+      saleSubcategoryFilter = this.value;
+      refreshSearchableSelectOptions("f_item", function(){return itemChoices(saleCategoryFilter, true, saleSubcategoryFilter);});
       $("#f_item_q").value = "";
       $("#f_item").value = "";
       $("#f_stockhint").textContent = "";
@@ -1984,6 +2323,24 @@ function openSaleModal(existingSale){
     syncItem();
   }
   wireFreeCombo("f_customer", function(){ return state.customers.map(function(c){return c.name;}); });
+  function syncChannelFields(){
+    var ch = $("#f_channel").value;
+    $("#grpExhibition").style.display = ch==="Exhibition" ? "" : "none";
+    $("#grpDeliveryCharge").style.display = ch==="Online" ? "" : "none";
+    $("#grpDeliveryCity").style.display = ch==="Online" ? "" : "none";
+    $("#grpDeliveryPincode").style.display = ch==="Online" ? "" : "none";
+  }
+  syncChannelFields();
+  $("#f_channel").addEventListener("change", syncChannelFields);
+  $("#btnQuickExhibition").addEventListener("click", function(){
+    openExhibitionEditor(null, function(newId, newData){
+      var sel = $("#f_exhibition");
+      var opt = document.createElement("option");
+      opt.value = newId; opt.textContent = newData.name + (newData.date ? (" — "+newData.date) : "");
+      sel.appendChild(opt);
+      sel.value = newId;
+    });
+  });
   $("#f_qty").addEventListener("input", updateDiscountHint);
   $("#f_price").addEventListener("input", updateDiscountHint);
   $("#f_listprice").addEventListener("input", updateDiscountHint);
@@ -2004,7 +2361,11 @@ function openSaleModal(existingSale){
     var payload = {
       channel:$("#f_channel").value, paymentMethod:$("#f_payment").value, date:$("#f_date").value||todayStr(),
       qty:qty, unitPrice:price, listPrice:listPrice,
-      customer:$("#f_customer").value.trim(), notes:$("#f_notes").value.trim()
+      customer:$("#f_customer").value.trim(), notes:$("#f_notes").value.trim(),
+      exhibitionId: $("#f_channel").value==="Exhibition" ? ($("#f_exhibition").value||"") : "",
+      deliveryCharge: $("#f_channel").value==="Online" ? (Number($("#f_deliverycharge").value)||0) : 0,
+      deliveryCity: $("#f_channel").value==="Online" ? $("#f_deliverycity").value.trim() : "",
+      deliveryPincode: $("#f_channel").value==="Online" ? $("#f_deliverypincode").value.trim() : ""
     };
     if(isEdit){
       await updateSale(existingSale, payload);
@@ -2049,7 +2410,7 @@ function openAdjustmentModal(){
   });
 }
 
-$("#btnAddItem").addEventListener("click", function(){ openItemModal(null); });
+$("#btnAddItem").addEventListener("click", function(){ openPurchaseModal(); });
 $("#btnAddPurchase").addEventListener("click", function(){ openPurchaseModal(); });
 $("#btnAddSale").addEventListener("click", function(){ openSaleModal(); });
 $("#btnAddAdjustment").addEventListener("click", function(){ openAdjustmentModal(); });
@@ -2114,6 +2475,34 @@ function simpleTable(headers, rows){
 }
 
 /* ---------------- render: inventory ---------------- */
+function wireInventoryEditButtons(){
+  $all("[data-edit]", $("#invTable")).forEach(function(btn){
+    btn.addEventListener("click", function(){ openItemModal(findItem(btn.dataset.edit)); });
+  });
+}
+function buildFlatInventoryTable(rows){
+  var body = rows.map(function(i){
+    var low = (i.stock||0) <= (i.reorderLevel||0);
+    return '<tr>'+
+      '<td class="photo-col">'+(i.photoData ? '<img class="thumb" src="'+i.photoData+'">' : '<div class="thumb-placeholder">🥻</div>')+'</td>'+
+      '<td>'+escapeHtml(i.name)+'<div class="muted" style="font-size:11.5px;">'+escapeHtml(i.sku||"")+'</div></td>'+
+      '<td>'+escapeHtml(i.category||"")+(i.subcategory?(' <span class="muted">/ '+escapeHtml(i.subcategory)+'</span>'):'')+'</td>'+
+      '<td>'+escapeHtml(i.color||"")+'</td>'+
+      '<td>'+escapeHtml(i.wholesaler||"")+'</td>'+
+      '<td class="num">'+fmtMoney(i.costPrice)+'</td>'+
+      '<td class="num">'+fmtMoney(i.sellingPrice)+'</td>'+
+      '<td class="num"><span class="tag '+(low?'low':'ok')+'">'+fmtNum(i.stock)+'</span></td>'+
+      '<td class="num">'+fmtMoney((i.stock||0)*(i.costPrice||0))+'</td>'+
+      '<td><div class="row-actions">'+
+        '<button class="btn small secondary" data-edit="'+i.id+'">Edit</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join("");
+  return '<table><thead><tr>'+
+    '<th></th><th>Item</th><th>Category</th><th>Color</th><th>Wholesaler</th><th class="num">Cost</th>'+
+    '<th class="num">Price</th><th class="num">Stock</th><th class="num">Stock value</th><th></th>'+
+    '</tr></thead><tbody>'+body+'</tbody></table>';
+}
 function renderInventory(){
   var q = ($("#invSearch").value||"").toLowerCase().trim();
   var sort = $("#invSort").value;
@@ -2130,42 +2519,65 @@ function renderInventory(){
     if(catFilter && i.category!==catFilter) return false;
     if(!q) return true;
     return (i.name||"").toLowerCase().indexOf(q)>=0 || (i.category||"").toLowerCase().indexOf(q)>=0 ||
-      (i.wholesaler||"").toLowerCase().indexOf(q)>=0 || (i.color||"").toLowerCase().indexOf(q)>=0;
+      (i.subcategory||"").toLowerCase().indexOf(q)>=0 || (i.wholesaler||"").toLowerCase().indexOf(q)>=0 ||
+      (i.color||"").toLowerCase().indexOf(q)>=0 || (i.sku||"").toLowerCase().indexOf(q)>=0;
   });
-  rows = rows.slice();
-  if(sort==="stock-asc") rows.sort(function(a,b){return (a.stock||0)-(b.stock||0);});
-  else if(sort==="stock-desc") rows.sort(function(a,b){return (b.stock||0)-(a.stock||0);});
-  else if(sort==="value-desc") rows.sort(function(a,b){return (b.stock*b.costPrice)-(a.stock*a.costPrice);});
-  else rows.sort(function(a,b){return (a.name||"").localeCompare(b.name||"");});
 
   if(rows.length===0){
     $("#invTable").innerHTML = '<div class="empty">No items match this filter.</div>';
     return;
   }
-  var body = rows.map(function(i){
-    var low = (i.stock||0) <= (i.reorderLevel||0);
-    return '<tr>'+
-      '<td class="photo-col">'+(i.photoData ? '<img class="thumb" src="'+i.photoData+'">' : '<div class="thumb-placeholder">🥻</div>')+'</td>'+
-      '<td>'+escapeHtml(i.name)+'<div class="muted" style="font-size:11.5px;">'+escapeHtml(i.sku||"")+'</div></td>'+
-      '<td>'+escapeHtml(i.category||"")+'</td>'+
-      '<td>'+escapeHtml(i.color||"")+'</td>'+
-      '<td>'+escapeHtml(i.wholesaler||"")+'</td>'+
-      '<td class="num">'+fmtMoney(i.costPrice)+'</td>'+
-      '<td class="num">'+fmtMoney(i.sellingPrice)+'</td>'+
-      '<td class="num"><span class="tag '+(low?'low':'ok')+'">'+fmtNum(i.stock)+'</span></td>'+
-      '<td class="num">'+fmtMoney((i.stock||0)*(i.costPrice||0))+'</td>'+
-      '<td><div class="row-actions">'+
-        '<button class="btn small secondary" data-edit="'+i.id+'">Edit</button>'+
-      '</div></td>'+
-    '</tr>';
-  }).join("");
-  $("#invTable").innerHTML = '<table><thead><tr>'+
-    '<th></th><th>Item</th><th>Category</th><th>Color</th><th>Wholesaler</th><th class="num">Cost</th>'+
-    '<th class="num">Price</th><th class="num">Stock</th><th class="num">Stock value</th><th></th>'+
-    '</tr></thead><tbody>'+body+'</tbody></table>';
-  $all("[data-edit]", $("#invTable")).forEach(function(btn){
-    btn.addEventListener("click", function(){ openItemModal(findItem(btn.dataset.edit)); });
+
+  if(q){
+    var flatRows = rows.slice();
+    if(sort==="stock-asc") flatRows.sort(function(a,b){return (a.stock||0)-(b.stock||0);});
+    else if(sort==="stock-desc") flatRows.sort(function(a,b){return (b.stock||0)-(a.stock||0);});
+    else if(sort==="value-desc") flatRows.sort(function(a,b){return (b.stock*b.costPrice)-(a.stock*a.costPrice);});
+    else flatRows.sort(function(a,b){return (a.name||"").localeCompare(b.name||"");});
+    $("#invTable").innerHTML = buildFlatInventoryTable(flatRows);
+    wireInventoryEditButtons();
+    return;
+  }
+
+  var byCategory = {};
+  rows.forEach(function(i){
+    var cat = i.category || "(No category)";
+    var sub = i.subcategory || "(No subcategory)";
+    if(!byCategory[cat]) byCategory[cat] = {};
+    if(!byCategory[cat][sub]) byCategory[cat][sub] = [];
+    byCategory[cat][sub].push(i);
   });
+  var catNames = Object.keys(byCategory).sort();
+  var html = catNames.map(function(cat){
+    var subs = byCategory[cat];
+    var subNames = Object.keys(subs).sort();
+    var catCount = subNames.reduce(function(s,sn){return s+subs[sn].length;},0);
+    var catValue = subNames.reduce(function(s,sn){return s+subs[sn].reduce(function(ss,p){return ss+(p.stock||0)*(p.costPrice||0);},0);},0);
+    var subsHtml = subNames.map(function(sub){
+      var pieces = subs[sub].slice().sort(function(a,b){return (a.color||"").localeCompare(b.color||"");});
+      var inStock = pieces.filter(function(p){return (p.stock||0)>0;}).length;
+      var piecesHtml = pieces.map(function(p){
+        return '<tr>'+
+          '<td class="photo-col">'+(p.photoData ? '<img class="thumb" src="'+p.photoData+'">' : '<div class="thumb-placeholder">🥻</div>')+'</td>'+
+          '<td>'+escapeHtml(p.color||"—")+'<div class="muted" style="font-size:11px;">'+escapeHtml(p.sku||"")+'</div></td>'+
+          '<td class="num">'+fmtMoney(p.costPrice)+'</td>'+
+          '<td class="num">'+fmtMoney(p.sellingPrice)+'</td>'+
+          '<td><span class="tag '+((p.stock||0)>0?'ok':'low')+'">'+((p.stock||0)>0?'In stock':'Sold')+'</span></td>'+
+          '<td><button class="btn small secondary" data-edit="'+p.id+'">Edit</button></td>'+
+        '</tr>';
+      }).join("");
+      return '<details class="inv-subcat">'+
+        '<summary>'+escapeHtml(sub)+' <span class="muted">— '+inStock+' in stock of '+pieces.length+'</span></summary>'+
+        '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th></th><th>Color / SKU</th><th class="num">Cost</th><th class="num">Price</th><th>Status</th><th></th></tr></thead><tbody>'+piecesHtml+'</tbody></table></div>'+
+      '</details>';
+    }).join("");
+    return '<details class="inv-category" open>'+
+      '<summary><strong>'+escapeHtml(cat)+'</strong> <span class="muted">— '+catCount+' piece'+(catCount===1?'':'s')+' · '+fmtMoney(catValue)+' stock value</span></summary>'+
+      '<div class="inv-subcat-wrap">'+subsHtml+'</div>'+
+    '</details>';
+  }).join("");
+  $("#invTable").innerHTML = html;
+  wireInventoryEditButtons();
 }
 $("#invSearch").addEventListener("input", renderInventory);
 $("#invSort").addEventListener("change", renderInventory);
@@ -2224,10 +2636,11 @@ function renderSales(){
     return;
   }
   var body = rows.map(function(s){
-    var profit = (s.totalPrice||0) - (s.qty*(s.costPriceAtSale||0));
+    var profit = saleProfit(s);
     var chClass = s.channel==="Online"?"online":(s.channel==="Exhibition"?"exhibition":"in-house");
+    var chDetail = s.channel==="Exhibition" ? (s.exhibitionName||"") : (s.channel==="Online" ? [s.deliveryCity,s.deliveryPincode].filter(Boolean).join(" ") : "");
     return '<tr><td>'+escapeHtml(s.date)+'</td><td>'+escapeHtml(s.itemName)+'</td>'+
-      '<td><span class="tag '+chClass+'">'+escapeHtml(s.channel)+'</span></td>'+
+      '<td><span class="tag '+chClass+'">'+escapeHtml(s.channel)+'</span>'+(chDetail?'<div class="muted" style="font-size:11px;">'+escapeHtml(chDetail)+'</div>':'')+'</td>'+
       '<td class="muted">'+escapeHtml(s.paymentMethod||"")+'</td>'+
       '<td class="num">'+fmtNum(s.qty)+'</td><td class="num">'+fmtMoney(s.unitPrice)+'</td>'+
       '<td class="num">'+fmtMoney(s.discount||0)+'</td>'+
@@ -2404,7 +2817,7 @@ function aggregateSalesBy(rows, keyFn){
   var buckets = {};
   rows.forEach(function(s){
     var key = keyFn(s) || "(none)";
-    var profit = (s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
+    var profit = saleProfit(s);
     if(!buckets[key]) buckets[key] = {qty:0, revenue:0, profit:0};
     buckets[key].qty += s.qty||0;
     buckets[key].revenue += s.totalPrice||0;
@@ -2418,12 +2831,13 @@ function renderSalesReport(el){
   var rows = state.sales.filter(function(s){return inRange(s.date, r);});
   var totalRevenue=0, totalProfit=0, totalQty=0, totalDiscount=0;
   rows.forEach(function(s){
-    var profit = (s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
+    var profit = saleProfit(s);
     totalRevenue += s.totalPrice||0; totalProfit += profit; totalQty += s.qty||0;
     totalDiscount += s.discount||0;
   });
   var byChannel = aggregateSalesBy(rows, function(s){return s.channel;});
   var byCategory = aggregateSalesBy(rows, function(s){return s.category;});
+  var bySubcategory = aggregateSalesBy(rows, function(s){return s.subcategory ? (s.category+" — "+s.subcategory) : null;});
   var byWholesaler = aggregateSalesBy(rows, function(s){return s.wholesaler;});
   var byPayment = aggregateSalesBy(rows, function(s){return s.paymentMethod;});
   el.innerHTML =
@@ -2435,13 +2849,14 @@ function renderSalesReport(el){
     '</div>'+
     '<div class="section-block"><h3>By channel</h3>'+simpleTable(["Channel","Units","Revenue","Profit"], byChannel)+'</div>'+
     '<div class="section-block"><h3>By category</h3>'+simpleTable(["Category","Units","Revenue","Profit"], byCategory)+'</div>'+
+    (bySubcategory.length ? '<div class="section-block"><h3>By subcategory</h3>'+simpleTable(["Category — Subcategory","Units","Revenue","Profit"], bySubcategory)+'</div>' : '')+
     '<div class="section-block"><h3>By wholesaler</h3>'+simpleTable(["Wholesaler","Units","Revenue","Profit"], byWholesaler)+'</div>'+
     '<div class="section-block"><h3>By payment method</h3>'+simpleTable(["Payment method","Units","Revenue","Profit"], byPayment)+'</div>'+
     '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
     '<div class="table-wrap">'+(rows.length ? simpleTable(
       ["Date","Item","Category","Wholesaler","Channel","Payment","Qty","List price","Sold at","Discount","Total","Profit"],
       rows.map(function(s){
-        var profit = (s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
+        var profit = saleProfit(s);
         return [escapeHtml(s.date), escapeHtml(s.itemName), escapeHtml(s.category||""), escapeHtml(s.wholesaler||""),
           escapeHtml(s.channel), escapeHtml(s.paymentMethod||""), fmtNum(s.qty), fmtMoney(s.listPriceAtSale||s.unitPrice),
           fmtMoney(s.unitPrice), fmtMoney(s.discount||0), fmtMoney(s.totalPrice), fmtMoney(profit)];
@@ -2449,10 +2864,10 @@ function renderSalesReport(el){
     ) : '<div class="empty">No sales in this range.</div>')+'</div>';
   $("#expBtn").addEventListener("click", function(){
     exportCSV("sales-report-"+todayStr()+".csv",
-      ["Date","Item","Category","Wholesaler","Channel","Payment Method","Qty","List Price","Sold At","Discount","Total","Cost At Sale","Profit","Customer"],
+      ["Date","Item","Category","Subcategory","Wholesaler","Channel","Exhibition","Payment Method","Qty","List Price","Sold At","Discount","Total","Cost At Sale","Profit","Customer","Delivery Charge","Delivery City","Delivery Pincode"],
       rows.map(function(s){
-        var profit=(s.totalPrice||0)-(s.qty*(s.costPriceAtSale||0));
-        return [s.date,s.itemName,s.category||"",s.wholesaler||"",s.channel,s.paymentMethod||"",s.qty,s.listPriceAtSale||s.unitPrice,s.unitPrice,s.discount||0,s.totalPrice,s.costPriceAtSale||0,profit,s.customer||""];
+        var profit=saleProfit(s);
+        return [s.date,s.itemName,s.category||"",s.subcategory||"",s.wholesaler||"",s.channel,s.exhibitionName||"",s.paymentMethod||"",s.qty,s.listPriceAtSale||s.unitPrice,s.unitPrice,s.discount||0,s.totalPrice,s.costPriceAtSale||0,profit,s.customer||"",s.deliveryCharge||0,s.deliveryCity||"",s.deliveryPincode||""];
       })
     );
   });
@@ -2461,19 +2876,36 @@ function renderSalesReport(el){
 function renderPurchaseReport(el){
   var r = getRange();
   var rows = state.purchases.filter(function(p){return inRange(p.date, r);});
-  var byW = {};
+  var byW = {}, byCat = {}, bySub = {};
   var totalCost=0, totalQty=0;
   rows.forEach(function(p){
     totalCost += p.totalCost||0; totalQty += p.qty||0;
     var w = p.wholesaler || "Unspecified";
     if(!byW[w]) byW[w]={qty:0,cost:0};
     byW[w].qty += p.qty||0; byW[w].cost += p.totalCost||0;
+    var it = findItem(p.itemId);
+    var cat = (it && it.category) || "(No category)";
+    var sub = (it && it.subcategory) ? (cat+" — "+it.subcategory) : null;
+    if(!byCat[cat]) byCat[cat]={qty:0,cost:0};
+    byCat[cat].qty += p.qty||0; byCat[cat].cost += p.totalCost||0;
+    if(sub){
+      if(!bySub[sub]) bySub[sub]={qty:0,cost:0};
+      bySub[sub].qty += p.qty||0; bySub[sub].cost += p.totalCost||0;
+    }
   });
   el.innerHTML =
     '<div class="sub-cards">'+
       '<div class="card"><div class="label">Units purchased</div><div class="value">'+fmtNum(totalQty)+'</div></div>'+
       '<div class="card"><div class="label">Total spent</div><div class="value">'+fmtMoney(totalCost)+'</div></div>'+
     '</div>'+
+    '<div class="section-block"><h3>By category</h3>'+simpleTable(
+      ["Category","Units","Total cost"],
+      Object.keys(byCat).sort().map(function(c){return [escapeHtml(c), fmtNum(byCat[c].qty), fmtMoney(byCat[c].cost)];})
+    )+'</div>'+
+    (Object.keys(bySub).length ? '<div class="section-block"><h3>By subcategory</h3>'+simpleTable(
+      ["Category — Subcategory","Units","Total cost"],
+      Object.keys(bySub).sort().map(function(s){return [escapeHtml(s), fmtNum(bySub[s].qty), fmtMoney(bySub[s].cost)];})
+    )+'</div>' : '')+
     '<div class="section-block"><h3>By wholesaler</h3>'+simpleTable(
       ["Wholesaler","Units","Total cost"],
       Object.keys(byW).map(function(w){return [escapeHtml(w), fmtNum(byW[w].qty), fmtMoney(byW[w].cost)];})
