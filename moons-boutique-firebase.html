@@ -514,7 +514,7 @@
   <section class="tab-panel" id="tab-inventory">
     <div class="panel-head">
       <div><h2>Inventory</h2><p>Every saree you stock, with cost, price and current quantity.</p></div>
-      <button class="btn" id="btnAddItem">+ Add stock</button>
+      <button class="btn secondary" id="btnAddItem">Go to Purchases to add stock →</button>
     </div>
     <div class="filters">
       <label>Search<input type="text" id="invSearch" placeholder="Name, color, wholesaler…"></label>
@@ -1266,14 +1266,15 @@ async function exportCSV(filename, headers, rows){
 }
 
 /* ---------------- tabs ---------------- */
+function switchTab(tabName){
+  currentTab = tabName;
+  $all("#tabNav button").forEach(function(b){ b.classList.toggle("active", b.dataset.tab===tabName); });
+  $all(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
+  $("#tab-"+currentTab).classList.add("active");
+  renderAll();
+}
 $all("#tabNav button").forEach(function(btn){
-  btn.addEventListener("click", function(){
-    currentTab = btn.dataset.tab;
-    $all("#tabNav button").forEach(function(b){ b.classList.toggle("active", b===btn); });
-    $all(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
-    $("#tab-"+currentTab).classList.add("active");
-    renderAll();
-  });
+  btn.addEventListener("click", function(){ switchTab(btn.dataset.tab); });
 });
 $all("#reportTabs button").forEach(function(btn){
   btn.addEventListener("click", function(){
@@ -1835,6 +1836,7 @@ function wireSearchableSelect(fieldId, choices, onChange){
     hidden.value = item.dataset.value;
     listEl.classList.remove("open");
     if(onChange) onChange(hidden.value, {value:item.dataset.value, label:item.dataset.label});
+    q.blur();
   });
 }
 /* Same idea for plain free-typing fields that just offer suggestions
@@ -1868,7 +1870,7 @@ function wireFreeCombo(fieldId, optionsProvider){
     if(!item) return;
     input.value = item.dataset.value;
     listEl.classList.remove("open");
-    input.dispatchEvent(new Event("input"));
+    input.blur();
   });
 }
 async function addCategoryQuick(name){
@@ -2014,6 +2016,7 @@ function openPurchaseLineEditor(existingLine, onSave){
       '<div class="field"><label>Selling price per piece (₹)</label><input id="pl_price" type="number" min="0" step="1" value="'+(line.basePrice===""||line.basePrice===undefined?"":line.basePrice)+'"></div>'+
       '<div class="field full"><label>Colors (optional — for your own reading, not required)</label><div id="pl_colors"></div>'+
         '<button type="button" class="btn ghost small" id="pl_addcolor" style="margin-top:2px;width:fit-content;">+ Add a color</button>'+
+        '<span class="hint" id="pl_colorcount"></span>'+
         '<span class="hint">Leave this empty if you don\'t want to note colors — the quantity above is all that\'s required.</span>'+
       '</div>'+
     '</div>'+
@@ -2028,25 +2031,39 @@ function openPurchaseLineEditor(existingLine, onSave){
   function renderColorRows(){
     var wrap = document.getElementById("pl_colors");
     if(!wrap) return;
+    var qty = Number($("#pl_qty").value)||0;
+    var addBtn = document.getElementById("pl_addcolor");
+    if(addBtn) addBtn.disabled = qty>0 && line.colors.length>=qty;
     if(line.colors.length===0){
       wrap.innerHTML = '<span class="hint">No colors noted yet — that\'s fine.</span>';
-      return;
+    } else {
+      wrap.innerHTML = line.colors.map(function(c, idx){
+        return '<div style="display:flex;gap:6px;margin-bottom:6px;">'+
+          '<input type="text" class="pl_color_input" data-idx="'+idx+'" value="'+escapeHtml(c)+'" placeholder="e.g. Maroon" style="flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;">'+
+          '<button type="button" class="btn ghost small pl_color_remove" data-idx="'+idx+'">✕</button>'+
+        '</div>';
+      }).join("");
+      $all(".pl_color_input", wrap).forEach(function(inp){
+        inp.addEventListener("input", function(){ line.colors[Number(this.dataset.idx)] = this.value; });
+      });
+      $all(".pl_color_remove", wrap).forEach(function(btn){
+        btn.addEventListener("click", function(){ line.colors.splice(Number(this.dataset.idx),1); renderColorRows(); });
+      });
     }
-    wrap.innerHTML = line.colors.map(function(c, idx){
-      return '<div style="display:flex;gap:6px;margin-bottom:6px;">'+
-        '<input type="text" class="pl_color_input" data-idx="'+idx+'" value="'+escapeHtml(c)+'" placeholder="e.g. Maroon" style="flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;">'+
-        '<button type="button" class="btn ghost small pl_color_remove" data-idx="'+idx+'">✕</button>'+
-      '</div>';
-    }).join("");
-    $all(".pl_color_input", wrap).forEach(function(inp){
-      inp.addEventListener("input", function(){ line.colors[Number(this.dataset.idx)] = this.value; });
-    });
-    $all(".pl_color_remove", wrap).forEach(function(btn){
-      btn.addEventListener("click", function(){ line.colors.splice(Number(this.dataset.idx),1); renderColorRows(); });
-    });
+    var countHint = document.getElementById("pl_colorcount");
+    if(countHint) countHint.textContent = qty>0 ? (line.colors.length+" of "+qty+" piece(s) have a color noted.") : "";
   }
   renderColorRows();
-  $("#pl_addcolor").addEventListener("click", function(){ line.colors.push(""); renderColorRows(); });
+  $("#pl_qty").addEventListener("input", function(){
+    var qty = Number($("#pl_qty").value)||0;
+    if(qty>0 && line.colors.length>qty) line.colors = line.colors.slice(0, qty);
+    renderColorRows();
+  });
+  $("#pl_addcolor").addEventListener("click", function(){
+    var qty = Number($("#pl_qty").value)||0;
+    if(qty>0 && line.colors.length>=qty){ toast("You've already got a color row for every piece — increase quantity to add more.", "error"); return; }
+    line.colors.push(""); renderColorRows();
+  });
   $("#pl_cancel").addEventListener("click", closeMini);
   $("#pl_save").addEventListener("click", async function(){
     var category = $("#pl_category").value.trim();
@@ -2424,7 +2441,7 @@ function openAdjustmentModal(){
   });
 }
 
-$("#btnAddItem").addEventListener("click", function(){ openPurchaseModal(); });
+$("#btnAddItem").addEventListener("click", function(){ switchTab("purchases"); });
 $("#btnAddPurchase").addEventListener("click", function(){ openPurchaseModal(); });
 $("#btnAddSale").addEventListener("click", function(){ openSaleModal(); });
 $("#btnAddAdjustment").addEventListener("click", function(){ openAdjustmentModal(); });
