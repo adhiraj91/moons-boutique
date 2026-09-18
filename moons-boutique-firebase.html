@@ -195,6 +195,7 @@
     display:flex;align-items:center;justify-content:space-between;gap:8px;
     padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--cream);font-size:13px;
   }
+  .chip-row-inactive{opacity:0.5;background:var(--line);}
   .chip-row .chip-actions{display:flex;gap:4px;}
   .chip-row button{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;padding:2px 5px;}
   .chip-row button:hover{color:var(--danger);}
@@ -936,7 +937,7 @@ function subscribeAll(){
 
   unsubscribers.push(db.collection("exhibitions").onSnapshot(function(snap){
     state.exhibitions = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-    state.exhibitions.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+    state.exhibitions.sort(function(a,b){ return (b.startDate||b.date||"").localeCompare(a.startDate||a.date||""); });
     if(currentDrawerView==="exhibitions") renderDrawer();
   }, function(err){ console.error(err); }));
 
@@ -1518,13 +1519,14 @@ function renderDrawerCustomers(){
 }
 
 function openExhibitionEditor(existing, onCreated){
-  var ex = existing || {name:"", location:"", date:todayStr(), stallCharge:"", additionalCharge:""};
+  var ex = existing || {name:"", location:"", startDate:todayStr(), endDate:todayStr(), stallCharge:"", additionalCharge:""};
   openMini(
     '<h3>'+(existing?'Edit exhibition':'Add exhibition')+'</h3>'+
     '<div class="form-grid">'+
       '<div class="field full"><label>Name</label><input id="ex_name" value="'+escapeHtml(ex.name||"")+'" placeholder="e.g. Diwali Mela, City Hall"></div>'+
       '<div class="field"><label>Location</label><input id="ex_location" value="'+escapeHtml(ex.location||"")+'" placeholder="e.g. Bengaluru"></div>'+
-      '<div class="field"><label>Date</label><input id="ex_date" type="date" value="'+(ex.date||todayStr())+'"></div>'+
+      '<div class="field"><label>Start date</label><input id="ex_startdate" type="date" value="'+(ex.startDate||ex.date||todayStr())+'"></div>'+
+      '<div class="field"><label>End date</label><input id="ex_enddate" type="date" value="'+(ex.endDate||ex.date||todayStr())+'"></div>'+
       '<div class="field"><label>Stall charge (₹)</label><input id="ex_stall" type="number" min="0" step="1" value="'+(ex.stallCharge===""||ex.stallCharge===undefined?"":ex.stallCharge)+'"></div>'+
       '<div class="field"><label>Additional charge (₹)</label><input id="ex_additional" type="number" min="0" step="1" value="'+(ex.additionalCharge===""||ex.additionalCharge===undefined?"":ex.additionalCharge)+'"></div>'+
     '</div>'+
@@ -1538,9 +1540,12 @@ function openExhibitionEditor(existing, onCreated){
   $("#ex_save").addEventListener("click", async function(){
     var name = $("#ex_name").value.trim();
     if(!name){ toast("Exhibition name is required.", "error"); return; }
+    var startDate = $("#ex_startdate").value||todayStr();
+    var endDate = $("#ex_enddate").value||startDate;
+    if(endDate < startDate){ toast("End date can't be before the start date.", "error"); return; }
     if(state.dbOffline){ toast("Please log in first.", "error"); return; }
     var data = {
-      name:name, location:$("#ex_location").value.trim(), date:$("#ex_date").value||todayStr(),
+      name:name, location:$("#ex_location").value.trim(), startDate:startDate, endDate:endDate,
       stallCharge:Number($("#ex_stall").value)||0, additionalCharge:Number($("#ex_additional").value)||0
     };
     closeMini();
@@ -1557,10 +1562,14 @@ function openExhibitionEditor(existing, onCreated){
   });
 }
 function renderDrawerExhibitions(){
+  var today = todayStr();
   var rows = state.exhibitions.map(function(e){
     var soldCount = state.sales.filter(function(s){return s.exhibitionId===e.id;}).length;
-    return '<div class="chip-row"><span>'+escapeHtml(e.name)+
-        ' <span class="muted">('+(e.date||"")+(e.location?(" · "+escapeHtml(e.location)):"")+' · '+soldCount+' sold)</span></span>'+
+    var start = e.startDate||e.date||"", end = e.endDate||e.date||"";
+    var isPast = end && end < today;
+    var dateLabel = start && end ? (start===end ? start : (start+" → "+end)) : (start||end||"");
+    return '<div class="chip-row'+(isPast?' chip-row-inactive':'')+'"><span>'+escapeHtml(e.name)+(isPast?' <span class="muted">(ended)</span>':'')+
+        ' <span class="muted">('+dateLabel+(e.location?(" · "+escapeHtml(e.location)):"")+' · '+soldCount+' sold)</span></span>'+
       '<div class="chip-actions">'+
         '<button data-editex="'+e.id+'" title="Edit">Edit</button>'+
         '<button data-delex="'+e.id+'" title="Delete">Delete</button>'+
@@ -2250,7 +2259,12 @@ function openSaleModal(existingSale){
         '<label>Exhibition</label>'+
         '<div style="display:flex;gap:6px;">'+
           '<select id="f_exhibition" style="flex:1;"><option value="">— Select exhibition —</option>'+
-            state.exhibitions.map(function(e){return '<option value="'+e.id+'"'+(isEdit&&existingSale.exhibitionId===e.id?' selected':'')+'>'+escapeHtml(e.name)+(e.date?(' — '+e.date):'')+'</option>';}).join("")+
+            state.exhibitions.map(function(e){
+              var end = e.endDate||e.date||"";
+              var ended = end && end < todayStr();
+              var dateLabel = (e.startDate||e.date) ? (' — '+(e.startDate||e.date)+(e.endDate&&e.endDate!==e.startDate?(' to '+e.endDate):'')) : '';
+              return '<option value="'+e.id+'"'+(isEdit&&existingSale.exhibitionId===e.id?' selected':'')+'>'+escapeHtml(e.name)+dateLabel+(ended?' (ended)':'')+'</option>';
+            }).join("")+
           '</select>'+
           '<button type="button" class="btn ghost small" id="btnQuickExhibition" style="white-space:nowrap;">+ New</button>'+
         '</div>'+
@@ -2336,7 +2350,7 @@ function openSaleModal(existingSale){
     openExhibitionEditor(null, function(newId, newData){
       var sel = $("#f_exhibition");
       var opt = document.createElement("option");
-      opt.value = newId; opt.textContent = newData.name + (newData.date ? (" — "+newData.date) : "");
+      opt.value = newId; opt.textContent = newData.name + (newData.startDate ? (" — "+newData.startDate+(newData.endDate&&newData.endDate!==newData.startDate?(" to "+newData.endDate):"")) : "");
       sel.appendChild(opt);
       sel.value = newId;
     });
