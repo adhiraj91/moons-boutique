@@ -168,28 +168,44 @@
     display:flex;flex-direction:column;
   }
   .drawer-overlay.show .drawer{transform:translateX(0);}
+  .drawer.collapsed{width:84px;}
   .drawer-head{
     background:linear-gradient(135deg,var(--maroon) 0%,var(--maroon-dark) 100%);
-    color:#fff;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;
+    color:#fff;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;
   }
-  .drawer-head h3{color:#fff;font-size:17px;margin:0;}
-  .drawer-close{background:rgba(255,255,255,0.12);border:none;color:#fff;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:15px;}
+  .drawer-head h3{color:#fff;font-size:17px;margin:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  .drawer.collapsed .drawer-head h3{display:none;}
+  .drawer-head-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  .drawer-close, .drawer-toggle{background:rgba(255,255,255,0.14);border:none;color:#fff;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:14px;flex-shrink:0;}
+  .drawer-toggle{transition:transform .2s ease;}
+  .drawer.collapsed .drawer-toggle{transform:rotate(180deg);}
   .drawer-body{padding:16px 18px;overflow-y:auto;flex:1;}
+  .drawer.collapsed .drawer-body{padding:16px 10px;}
   .drawer-section{margin-bottom:22px;}
   .drawer-section h4{
     font-family:var(--font-display);font-size:14.5px;margin:0 0 4px 0;color:var(--ink);
   }
   .drawer-section .desc{font-size:12px;color:var(--ink-soft);margin:0 0 10px 0;}
+  .drawer.collapsed .drawer-section h4, .drawer.collapsed .drawer-section .desc{display:none;}
   .drawer-nav-btn{
     width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);
-    padding:11px 13px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink);
-    cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;
+    padding:9px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink);
+    cursor:pointer;display:flex;align-items:center;gap:10px;margin-bottom:8px;
   }
   .drawer-nav-btn:hover{border-color:var(--gold);background:var(--gold-light);}
-  .drawer-nav-btn .arrow{color:var(--ink-soft);font-weight:400;}
+  .drawer-nav-btn .nav-icon{
+    width:32px;height:32px;border-radius:8px;background:var(--gold-light);color:var(--maroon);
+    display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;
+  }
+  .drawer-nav-btn .nav-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .drawer-nav-btn .arrow{color:var(--ink-soft);font-weight:400;flex-shrink:0;}
   .drawer-nav-btn.danger-nav{color:var(--danger);border-color:var(--danger-bg);background:var(--danger-bg);}
   .drawer-nav-btn.danger-nav:hover{border-color:var(--danger);background:var(--danger-bg);}
   .drawer-nav-btn.danger-nav .arrow{color:var(--danger);}
+  .drawer-nav-btn.danger-nav .nav-icon{background:var(--danger-bg);color:var(--danger);}
+  .drawer.collapsed .drawer-nav-btn{justify-content:center;padding:9px 4px;}
+  .drawer.collapsed .drawer-nav-btn .nav-label, .drawer.collapsed .drawer-nav-btn .arrow{display:none;}
+  .drawer.collapsed .drawer-nav-btn .nav-icon{margin:0;}
   .chip-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
   .chip-row{
     display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -328,27 +344,25 @@
   .inv-subcat>summary::-webkit-details-marker{display:none;}
   .inv-subcat>summary::before{content:"▸";color:var(--ink-soft);margin-right:6px;font-size:11px;}
   .inv-subcat[open]>summary::before{content:"▾";}
-  .inv-tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
+  .inv-tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px;}
   .inv-tile{
-    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:14px;cursor:pointer;transition:box-shadow .15s ease,transform .1s ease;
-    box-shadow:0 1px 2px rgba(0,0,0,0.04);text-align:left;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:16px 12px;cursor:pointer;transition:box-shadow .15s ease,transform .1s ease;
+    box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;
   }
-  .inv-tile:active{transform:scale(0.98);}
-  .inv-tile:hover{box-shadow:0 4px 12px rgba(122,31,61,0.14);border-color:var(--gold);}
-  .inv-tile-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-bottom:10px;
-    font-family:var(--font-display);font-size:15.5px;color:var(--maroon);border-bottom:1px solid var(--line);padding-bottom:8px;}
-  .inv-tile-count{font-family:var(--font-body);font-size:11.5px;font-weight:700;color:#fff;background:var(--maroon);
-    border-radius:20px;padding:2px 8px;white-space:nowrap;}
-  .inv-tile-subs{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;min-height:20px;}
-  .inv-tile-sub{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);gap:8px;}
-  .inv-tile-sub span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .inv-tile-sub-count{font-weight:700;color:var(--ink);flex-shrink:0;}
-  .inv-tile-more{font-size:11.5px;color:var(--gold);font-weight:600;}
-  .inv-tile-value{font-size:11.5px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:8px;}
+  .inv-tile:active{transform:scale(0.97);}
+  .inv-tile:hover{box-shadow:0 4px 14px rgba(122,31,61,0.16);border-color:var(--gold);}
+  .inv-tile-icon{
+    width:46px;height:46px;border-radius:12px;background:var(--gold-light);color:var(--maroon);
+    display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 10px;
+  }
+  .inv-tile-count{font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--maroon);line-height:1;}
+  .inv-tile-label{font-size:12.5px;font-weight:700;color:var(--ink);margin-top:5px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .inv-tile-caption{font-size:11px;color:var(--ink-soft);margin-top:4px;}
   .inv-back-btn{background:none;border:none;color:var(--maroon);font-weight:700;font-size:13.5px;
     padding:6px 0 14px 0;cursor:pointer;display:flex;align-items:center;gap:4px;}
-  .inv-cat-detail-head{margin-bottom:12px;}
+  .inv-cat-detail-head{margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
   .inv-cat-detail-head h3{font-family:var(--font-display);color:var(--maroon);font-size:19px;margin:0 0 2px 0;}
   .inv-cat-detail-head p{margin:0;}
   .photo-upload{display:flex;align-items:center;gap:14px;}
@@ -506,10 +520,13 @@
 </div>
 
 <div class="drawer-overlay" id="drawerOverlay">
-  <div class="drawer">
+  <div class="drawer" id="drawerPanel">
     <div class="drawer-head">
       <h3 id="drawerTitle">Menu</h3>
-      <button class="drawer-close" id="drawerClose" type="button">✕</button>
+      <div class="drawer-head-actions">
+        <button class="drawer-toggle" id="drawerToggle" type="button" title="Collapse menu">⇤</button>
+        <button class="drawer-close" id="drawerClose" type="button">✕</button>
+      </div>
     </div>
     <div class="drawer-body" id="drawerBody"></div>
   </div>
@@ -539,7 +556,7 @@
       <div><h2>Inventory</h2><p>Every saree you stock, with cost, price and current quantity.</p></div>
       <button class="btn secondary" id="btnAddItem">Go to Purchases to add stock →</button>
     </div>
-    <div class="filters">
+    <div class="filters" id="invFilters">
       <label>Search<input type="text" id="invSearch" placeholder="Name, color, wholesaler…"></label>
       <label>Category<select id="invCategoryFilter"><option value="">All categories</option></select></label>
       <label>Sort<select id="invSort">
@@ -1322,10 +1339,15 @@ $("#drawerClose").addEventListener("click", closeDrawer);
 $("#drawerOverlay").addEventListener("click", function(e){
   if(e.target===$("#drawerOverlay")) closeDrawer();
 });
+$("#drawerToggle").addEventListener("click", function(){
+  $("#drawerPanel").classList.toggle("collapsed");
+});
 
 function renderDrawer(){
   var titles = {home:"Menu", business:"Business details", categories:"Manage categories", wholesalers:"Manage wholesalers", customers:"Manage customers", exhibitions:"Manage exhibitions", access:"Manage access"};
   $("#drawerTitle").textContent = titles[currentDrawerView] || "Menu";
+  $("#drawerToggle").style.display = (currentDrawerView==="home") ? "" : "none";
+  if(currentDrawerView!=="home") $("#drawerPanel").classList.remove("collapsed");
   if(currentDrawerView==="home") return renderDrawerHome();
   if(currentDrawerView==="business") return renderDrawerBusiness();
   if(currentDrawerView==="categories") return renderDrawerCategories();
@@ -1346,22 +1368,22 @@ function renderDrawerHome(){
   var email = (auth.currentUser && auth.currentUser.email) || "";
   $("#drawerBody").innerHTML =
     '<div class="drawer-section">'+
-      '<button class="drawer-nav-btn" data-nav="business">Business details<span class="arrow">›</span></button>'+
-      '<button class="drawer-nav-btn" data-nav="categories">Manage categories<span class="arrow">›</span></button>'+
-      '<button class="drawer-nav-btn" data-nav="wholesalers">Manage wholesalers<span class="arrow">›</span></button>'+
-      '<button class="drawer-nav-btn" data-nav="customers">Manage customers<span class="arrow">›</span></button>'+
-      '<button class="drawer-nav-btn" data-nav="exhibitions">Manage exhibitions<span class="arrow">›</span></button>'+
-      (currentMemberRole==="owner" ? '<button class="drawer-nav-btn" data-nav="access">Manage access<span class="arrow">›</span></button>' : '')+
+      '<button class="drawer-nav-btn" data-nav="business" title="Business details"><span class="nav-icon">🏬</span><span class="nav-label">Business details</span><span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" data-nav="categories" title="Manage categories"><span class="nav-icon">🏷️</span><span class="nav-label">Manage categories</span><span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" data-nav="wholesalers" title="Manage wholesalers"><span class="nav-icon">🧵</span><span class="nav-label">Manage wholesalers</span><span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" data-nav="customers" title="Manage customers"><span class="nav-icon">👤</span><span class="nav-label">Manage customers</span><span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" data-nav="exhibitions" title="Manage exhibitions"><span class="nav-icon">🎪</span><span class="nav-label">Manage exhibitions</span><span class="arrow">›</span></button>'+
+      (currentMemberRole==="owner" ? '<button class="drawer-nav-btn" data-nav="access" title="Manage access"><span class="nav-icon">🔑</span><span class="nav-label">Manage access</span><span class="arrow">›</span></button>' : '')+
     '</div>'+
     '<div class="drawer-section">'+
       '<h4>Data</h4>'+
-      '<button class="drawer-nav-btn" id="btnDrawerSample" type="button">Add sample data<span class="arrow">›</span></button>'+
-      '<button class="drawer-nav-btn danger-nav" id="btnDrawerDeleteAll" type="button">Delete all data<span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" id="btnDrawerSample" type="button" title="Add sample data"><span class="nav-icon">🌱</span><span class="nav-label">Add sample data</span><span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn danger-nav" id="btnDrawerDeleteAll" type="button" title="Delete all data"><span class="nav-icon">🗑️</span><span class="nav-label">Delete all data</span><span class="arrow">›</span></button>'+
     '</div>'+
     '<div class="drawer-section">'+
       '<h4>Account</h4>'+
       '<p class="desc">Signed in as '+escapeHtml(email)+(currentMemberRole==="owner"?' (Owner)':'')+'</p>'+
-      '<button class="drawer-nav-btn" id="btnDrawerLogout" type="button">Log out<span class="arrow">›</span></button>'+
+      '<button class="drawer-nav-btn" id="btnDrawerLogout" type="button" title="Log out"><span class="nav-icon">🚪</span><span class="nav-label">Log out</span><span class="arrow">›</span></button>'+
     '</div>'+
     '<div class="drawer-section"><p class="desc">More reports and CSV exports live under the Reports tab.</p></div>';
   $all("[data-nav]", $("#drawerBody")).forEach(function(b){
@@ -2596,6 +2618,11 @@ function renderInventory(){
       (i.color||"").toLowerCase().indexOf(q)>=0 || (i.sku||"").toLowerCase().indexOf(q)>=0;
   });
 
+  // The search/category/sort bar is only useful on the tile grid and the
+  // flat search-results table — the category detail page has its own
+  // "‹ All categories" way back, so the filter bar just gets in the way there.
+  $("#invFilters").style.display = (catFilter && !q) ? "none" : "";
+
   if(rows.length===0 && !catFilter){
     $("#invTable").innerHTML = '<div class="empty">No items match this filter.</div>';
     return;
@@ -2618,59 +2645,25 @@ function renderInventory(){
     renderInventoryCategoryTiles(rows);
   }
 }
-function groupBySubcategory(rows){
-  var subs = {};
-  rows.forEach(function(i){
-    var sub = i.subcategory || "(No subcategory)";
-    if(!subs[sub]) subs[sub] = [];
-    subs[sub].push(i);
-  });
-  return subs;
-}
-function subcatDetailsHtml(subs){
-  var subNames = Object.keys(subs).sort();
-  return subNames.map(function(sub){
-    var pieces = subs[sub].slice().sort(function(a,b){return (a.color||"").localeCompare(b.color||"");});
-    var inStock = pieces.filter(function(p){return (p.stock||0)>0;}).length;
-    var piecesHtml = pieces.map(function(p){
-      return '<tr>'+
-        '<td class="photo-col">'+(p.photoData ? '<img class="thumb" src="'+p.photoData+'">' : '<div class="thumb-placeholder">🥻</div>')+'</td>'+
-        '<td>'+escapeHtml(p.color||"—")+'<div class="muted" style="font-size:11px;">'+escapeHtml(p.sku||"")+'</div></td>'+
-        '<td class="num">'+fmtMoney(p.costPrice)+'</td>'+
-        '<td class="num">'+fmtMoney(p.sellingPrice)+'</td>'+
-        '<td><span class="tag '+((p.stock||0)>0?'ok':'low')+'">'+((p.stock||0)>0?'In stock':'Sold')+'</span></td>'+
-        '<td><button class="btn small secondary" data-edit="'+p.id+'">Edit</button></td>'+
-      '</tr>';
-    }).join("");
-    return '<details class="inv-subcat">'+
-      '<summary>'+escapeHtml(sub)+' <span class="muted">— '+inStock+' in stock of '+pieces.length+'</span></summary>'+
-      '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th></th><th>Color / SKU</th><th class="num">Cost</th><th class="num">Price</th><th>Status</th><th></th></tr></thead><tbody>'+piecesHtml+'</tbody></table></div>'+
-    '</details>';
-  }).join("");
-}
+/* Compact icon-stat tiles — one per category — for the Inventory landing
+   view. Tapping a tile drills into that category's tabular detail page. */
 function renderInventoryCategoryTiles(rows){
   var byCategory = {};
   rows.forEach(function(i){
     var cat = i.category || "(No category)";
-    var sub = i.subcategory || "(No subcategory)";
-    if(!byCategory[cat]) byCategory[cat] = {};
-    if(!byCategory[cat][sub]) byCategory[cat][sub] = [];
-    byCategory[cat][sub].push(i);
+    if(!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(i);
   });
   var catNames = Object.keys(byCategory).sort();
   var html = '<div class="inv-tile-grid">'+catNames.map(function(cat){
-    var subs = byCategory[cat];
-    var subNames = Object.keys(subs).sort();
-    var catCount = subNames.reduce(function(s,sn){return s+subs[sn].length;},0);
-    var catValue = subNames.reduce(function(s,sn){return s+subs[sn].reduce(function(ss,p){return ss+(p.stock||0)*(p.costPrice||0);},0);},0);
-    var shown = subNames.slice(0,4);
-    var subsHtml = shown.map(function(sn){
-      return '<div class="inv-tile-sub"><span>'+escapeHtml(sn)+'</span><span class="inv-tile-sub-count">'+subs[sn].length+'</span></div>';
-    }).join("") + (subNames.length>4 ? '<div class="inv-tile-more">+'+(subNames.length-4)+' more</div>' : '');
+    var pieces = byCategory[cat];
+    var catCount = pieces.length;
+    var subCount = new Set(pieces.map(function(p){return p.subcategory||"(No subcategory)";})).size;
     return '<div class="inv-tile" data-cat="'+escapeHtml(cat)+'">'+
-      '<div class="inv-tile-head"><span>'+escapeHtml(cat)+'</span><span class="inv-tile-count">'+catCount+'</span></div>'+
-      '<div class="inv-tile-subs">'+subsHtml+'</div>'+
-      '<div class="inv-tile-value">'+fmtMoney(catValue)+' stock value</div>'+
+      '<div class="inv-tile-icon">🥻</div>'+
+      '<div class="inv-tile-count">'+catCount+'</div>'+
+      '<div class="inv-tile-label">'+escapeHtml(cat)+'</div>'+
+      '<div class="inv-tile-caption">'+subCount+' subcategor'+(subCount===1?'y':'ies')+'</div>'+
     '</div>';
   }).join("")+'</div>';
   $("#invTable").innerHTML = html;
@@ -2681,14 +2674,35 @@ function renderInventoryCategoryTiles(rows){
     });
   });
 }
+/* Category detail page — a plain table of every piece in this category,
+   sorted by subcategory then color, with an Edit action per row. No
+   search/category/sort bar here — that's what the "‹ All categories"
+   back button and the tile grid are for. */
 function renderInventoryCategoryDetail(rows, cat){
-  var subs = groupBySubcategory(rows);
   var catCount = rows.length;
   var catValue = rows.reduce(function(s,p){return s+(p.stock||0)*(p.costPrice||0);},0);
+  var sorted = rows.slice().sort(function(a,b){
+    var s = (a.subcategory||"").localeCompare(b.subcategory||"");
+    return s!==0 ? s : (a.color||"").localeCompare(b.color||"");
+  });
+  var bodyHtml = sorted.map(function(p){
+    return '<tr>'+
+      '<td class="photo-col">'+(p.photoData ? '<img class="thumb" src="'+p.photoData+'">' : '<div class="thumb-placeholder">🥻</div>')+'</td>'+
+      '<td>'+escapeHtml(p.subcategory||"—")+'</td>'+
+      '<td>'+escapeHtml(p.color||"—")+'<div class="muted" style="font-size:11px;">'+escapeHtml(p.sku||"")+'</div></td>'+
+      '<td class="num">'+fmtMoney(p.costPrice)+'</td>'+
+      '<td class="num">'+fmtMoney(p.sellingPrice)+'</td>'+
+      '<td><span class="tag '+((p.stock||0)>0?'ok':'low')+'">'+((p.stock||0)>0?'In stock':'Sold')+'</span></td>'+
+      '<td><button class="btn small secondary" data-edit="'+p.id+'">Edit</button></td>'+
+    '</tr>';
+  }).join("");
+  var tableHtml = rows.length
+    ? '<div class="table-wrap"><table><thead><tr><th></th><th>Subcategory</th><th>Color / SKU</th><th class="num">Cost</th><th class="num">Price</th><th>Status</th><th></th></tr></thead><tbody>'+bodyHtml+'</tbody></table></div>'
+    : '<div class="empty">No items in this category.</div>';
   $("#invTable").innerHTML =
     '<button type="button" class="inv-back-btn" id="invBack">‹ All categories</button>'+
-    '<div class="inv-cat-detail-head"><h3>'+escapeHtml(cat)+'</h3><p class="muted">'+catCount+' piece'+(catCount===1?'':'s')+' · '+fmtMoney(catValue)+' stock value</p></div>'+
-    '<div class="inv-subcat-wrap">'+(rows.length ? subcatDetailsHtml(subs) : '<span class="hint">No items in this category.</span>')+'</div>';
+    '<div class="inv-cat-detail-head"><div><h3>'+escapeHtml(cat)+'</h3><p class="muted">'+catCount+' piece'+(catCount===1?'':'s')+' · '+fmtMoney(catValue)+' stock value</p></div></div>'+
+    tableHtml;
   $("#invBack").addEventListener("click", function(){
     $("#invCategoryFilter").value = "";
     renderInventory();
