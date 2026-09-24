@@ -575,7 +575,10 @@
   <section class="tab-panel" id="tab-purchases">
     <div class="panel-head">
       <div><h2>Purchases</h2><p>Stock coming in from your wholesalers.</p></div>
-      <button class="btn" id="btnAddPurchase">+ Record purchase</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" id="btnAddPurchase">+ Add purchase</button>
+        <button class="btn secondary" id="btnEditPurchase">✎ Edit purchase</button>
+      </div>
     </div>
     <div class="filters">
       <label>Wholesaler<div id="purWholesalerFilterWrap"></div></label>
@@ -666,7 +669,7 @@ var PAYMENT_METHODS = ["Cash","UPI","Card","Bank transfer","Other"];
 
 /* ---------------- state ---------------- */
 var state = {
-  inventory: [], purchases: [], sales: [], stockLog: [],
+  inventory: [], purchases: [], purchaseBatches: [], sales: [], stockLog: [],
   categories: [], wholesalers: [], customers: [], exhibitions: [], business: {}, members: [],
   dbReady:false, dbOffline:false
 };
@@ -828,7 +831,7 @@ auth.onAuthStateChanged(function(user){
     db = null;
     currentMemberRole = null;
     state.dbOffline = true;
-    state.inventory = []; state.purchases = []; state.sales = []; state.stockLog = [];
+    state.inventory = []; state.purchases = []; state.purchaseBatches = []; state.sales = []; state.stockLog = [];
     state.categories = []; state.wholesalers = []; state.customers = []; state.exhibitions = []; state.business = {}; state.members = [];
     categoriesSeeded = false;
     $("#loginScreen").classList.remove("hidden");
@@ -939,6 +942,11 @@ function subscribeAll(){
 
   unsubscribers.push(db.collection("purchases").orderBy("createdAt","desc").onSnapshot(function(snap){
     state.purchases = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    renderAll();
+  }, function(err){ console.error(err); }));
+
+  unsubscribers.push(db.collection("purchaseBatches").onSnapshot(function(snap){
+    state.purchaseBatches = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
     renderAll();
   }, function(err){ console.error(err); }));
 
@@ -1695,7 +1703,7 @@ function renderDrawerAccess(){
 
 async function deleteAllData(){
   if(state.dbOffline){ toast("Please log in first.", "error"); return; }
-  var total = state.inventory.length + state.purchases.length + state.sales.length + state.stockLog.length;
+  var total = state.inventory.length + state.purchases.length + state.purchaseBatches.length + state.sales.length + state.stockLog.length;
   if(total===0){ toast("There's nothing to delete yet.", "success"); return; }
   var ok = await appConfirm(
     "This permanently deletes all "+fmtNum(state.inventory.length)+" item(s), "+fmtNum(state.purchases.length)+
@@ -1708,6 +1716,7 @@ async function deleteAllData(){
     var jobs = [];
     state.inventory.forEach(function(i){ jobs.push(db.doc("inventory/"+i.id).delete()); });
     state.purchases.forEach(function(p){ jobs.push(db.doc("purchases/"+p.id).delete()); });
+    state.purchaseBatches.forEach(function(b){ jobs.push(db.doc("purchaseBatches/"+b.id).delete()); });
     state.sales.forEach(function(s){ jobs.push(db.doc("sales/"+s.id).delete()); });
     state.stockLog.forEach(function(l){ jobs.push(db.doc("stockLog/"+l.id).delete()); });
     await Promise.all(jobs);
@@ -2138,9 +2147,15 @@ function openPurchaseLineEditor(existingLine, onSave){
    connection mid-save on a phone used to be able to leave an inventory
    piece behind with no matching stock-in log entry (harmless to your
    actual stock count, but it made "Stock in" totals in Reports drift
-   slightly from Dashboard's live inventory count). */
-async function recordBatchLines(lines, meta, additionalCost){
+   slightly from Dashboard's live inventory count).
+   Every piece is stamped with a shared batchId, and the lines themselves
+   are snapshotted into a purchaseBatches doc — that's what lets "Edit
+   purchase" re-open this whole purchase (every category/subcategory line,
+   the wholesaler, date, additional cost) as one editable unit instead of
+   piece by piece. Pass an existing batchId to re-use it (editing). */
+async function recordBatchLines(lines, meta, additionalCost, existingBatchId){
   if(state.dbOffline){ toast("Please log in first.", "error"); return 0; }
+  var batchId = existingBatchId || db.collection("purchaseBatches").doc().id;
   var totalPieces = lines.reduce(function(s,l){return s+(l.qty||l.colors.length||0);}, 0);
   var perPieceExtra = totalPieces>0 ? (additionalCost||0)/totalPieces : 0;
   var pieces = [];
@@ -2166,83 +2181,83 @@ async function recordBatchLines(lines, meta, additionalCost){
         name: displayName, sku: genSku(line.subcategory||line.category), category: line.category,
         subcategory: line.subcategory||"", color: color, wholesaler: meta.wholesaler,
         costPrice: finalCost, baseCostPrice: line.baseCost||0, sellingPrice: line.basePrice||0, stock: 1, reorderLevel: 0,
-        notes:"", photoData:null, createdAt: nowIso()
+        notes:"", photoData:null, batchId: batchId, createdAt: nowIso()
       });
       batch.set(pRef, {
         date: meta.date, wholesaler: meta.wholesaler, itemId: itemRef.id,
         itemName: displayName+(color?(" — "+color):""),
-        qty: 1, unitCost: finalCost, totalCost: finalCost,
+        qty: 1, unitCost: finalCost, totalCost: finalCost, batchId: batchId,
         notes: (perPieceExtra ? ("Includes ₹"+perPieceExtra.toFixed(0)+" share of this purchase's additional cost. ") : "")+(meta.notes||""),
         createdAt: nowIso()
       });
       batch.set(logRef, {
         date: meta.date, type:"in", itemId: itemRef.id, itemName: displayName, qty:1,
-        reason:"Purchase", detail: meta.wholesaler, refType:"purchase", refId: pRef.id, createdAt: nowIso()
+        reason:"Purchase", detail: meta.wholesaler, refType:"purchase", refId: pRef.id, batchId: batchId, createdAt: nowIso()
       });
       created++;
     });
     await batch.commit();
   }
-  return created;
+  var pbData = {
+    date: meta.date, wholesaler: meta.wholesaler, notes: meta.notes||"", additionalCost: additionalCost||0,
+    lines: lines.map(function(l){ return {category:l.category, subcategory:l.subcategory||"", qty:(l.qty||l.colors.length||0), baseCost:l.baseCost||0, basePrice:l.basePrice||0, colors:(l.colors||[]).slice()}; }),
+    pieceCount: pieces.length, updatedAt: nowIso()
+  };
+  if(existingBatchId){
+    await db.doc("purchaseBatches/"+batchId).update(pbData);
+  } else {
+    pbData.createdAt = nowIso();
+    await db.doc("purchaseBatches/"+batchId).set(pbData);
+  }
+  return {created: created, batchId: batchId};
+}
+/* Deletes every inventory piece, purchase record and stock-log entry that
+   belongs to a purchase batch — used when editing a batch (delete-then-
+   recreate) or deleting one outright. Reads only from already-synced local
+   state, so it needs no extra Firestore queries. */
+async function deleteBatchPieces(batchId){
+  var purchasesToDelete = state.purchases.filter(function(p){return p.batchId===batchId;});
+  var purchaseIds = purchasesToDelete.map(function(p){return p.id;});
+  var itemIds = purchasesToDelete.map(function(p){return p.itemId;});
+  var logsToDelete = state.stockLog.filter(function(l){return l.batchId===batchId || (l.refId && purchaseIds.indexOf(l.refId)>=0);});
+  var docs = [];
+  itemIds.forEach(function(id){ docs.push(db.doc("inventory/"+id)); });
+  purchaseIds.forEach(function(id){ docs.push(db.doc("purchases/"+id)); });
+  logsToDelete.forEach(function(l){ docs.push(db.doc("stockLog/"+l.id)); });
+  for(var start=0; start<docs.length; start+=400){
+    var batch = firestore.batch();
+    docs.slice(start, start+400).forEach(function(ref){ batch.delete(ref); });
+    await batch.commit();
+  }
+}
+/* True if any piece from this batch has already been sold — editing the
+   batch as a whole (which deletes and recreates its pieces) isn't safe
+   then, since a sale's itemId would be left pointing at nothing. */
+function batchHasSoldPieces(batchId){
+  var itemIds = state.purchases.filter(function(p){return p.batchId===batchId;}).map(function(p){return p.itemId;});
+  return state.sales.some(function(s){return itemIds.indexOf(s.itemId)>=0;});
 }
 
-/* ---- purchase modal ---- */
-function openPurchaseModal(existingPurchase){
-  var isEdit = !!existingPurchase;
-  var hasItems = state.inventory.length>0;
-  var mode = isEdit ? "existing" : (hasItems ? "existing" : "new");
-  var editItem = isEdit ? findItem(existingPurchase.itemId) : null;
-  var purchaseLines = [];
-
-  openModal(
-    '<h3>'+(isEdit?'Edit purchase':'Record purchase')+'</h3>'+
-    (isEdit ? '<p class="hint" style="margin:-4px 0 10px 0;">Item: <strong>'+escapeHtml(existingPurchase.itemName)+'</strong> (can\'t be changed — delete and re-add if it was the wrong item)</p>' :
-    '<div class="report-tabs" id="purModeToggle" style="margin-bottom:4px;">'+
-      '<button type="button" data-mode="existing"'+(!hasItems?' disabled style="opacity:0.4;cursor:not-allowed;"':'')+' class="'+(mode==="existing"?"active":"")+'">Existing item</button>'+
-      '<button type="button" data-mode="new" class="'+(mode==="new"?"active":"")+'">New batch</button>'+
-    '</div>')+
-    '<div class="form-grid">'+
-      '<div class="field full" id="grpExisting" style="'+(mode==="existing"?"":"display:none;")+'">'+
-        '<label>Item</label>'+searchableSelectHtml("f_item", function(){return itemChoices();}, isEdit?existingPurchase.itemId:"", "Type an item name…")+
-      '</div>'+
-      '<div class="field"><label>Wholesaler</label>'+freeComboHtml("f_wholesaler", isEdit?(existingPurchase.wholesaler||""):"", "Supplier name")+'</div>'+
-      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingPurchase.date:todayStr())+'"></div>'+
-      '<div class="field" id="grpQty" style="'+(mode==="new"?"display:none;":"")+'"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingPurchase.qty:1)+'"></div>'+
-      '<div class="field" id="grpUnitCost" style="'+(mode==="new"?"display:none;":"")+'"><label>Unit cost (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+(isEdit?existingPurchase.unitCost:"")+'"></div>'+
-      '<div class="field full" id="grpUpdateCost" style="'+(mode==="new"?"display:none;":"")+'"><label><input type="checkbox" id="f_updatecost"'+(isEdit?"":" checked")+' style="width:auto;display:inline-block;margin-right:6px;">Update this item\'s cost price to match</label></div>'+
-      '<div class="field full" id="grpBatch" style="'+(mode==="new"?"":"display:none;")+'">'+
-        '<label>Additional cost for this purchase — transport, porter, etc. (₹, optional)</label>'+
-        '<input id="f_additional" type="number" min="0" step="1" value="0">'+
-        '<span class="hint">Split evenly across every piece below and baked straight into each one\'s cost price.</span>'+
-      '</div>'+
-      '<div class="field full" id="grpLines" style="'+(mode==="new"?"":"display:none;")+'">'+
-        '<div id="linesList"></div>'+
-        '<button type="button" class="btn secondary small" id="btnAddLine" style="margin-top:8px;">+ Add item to this purchase</button>'+
-      '</div>'+
-      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(isEdit?(existingPurchase.notes||""):"")+'</textarea></div>'+
-    '</div>'+
-    '<div class="modal-actions">'+
-      '<button class="btn ghost" id="f_cancel">Cancel</button>'+
-      '<button class="btn" id="f_save">'+(isEdit?'Save changes':'Record purchase')+'</button>'+
-    '</div>'
-  );
-  var wField = $("#f_wholesaler");
-  wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
-
+/* ---- purchase modal (add) ---- */
+function purchaseLinesListHtml(){
+  return '<div id="linesList"></div>'+
+    '<button type="button" class="btn secondary small" id="btnAddLine" style="margin-top:8px;">+ Add item to this purchase</button>';
+}
+function wirePurchaseLinesList(purchaseLines, onChange){
   function renderLinesList(){
     var wrap = $("#linesList");
     if(purchaseLines.length===0){
       wrap.innerHTML = '<div class="empty" style="padding:14px 10px;">No items added yet.</div>';
-      return;
+    } else {
+      var totalPieces = purchaseLines.reduce(function(s,l){return s+(l.qty||l.colors.length||0);},0);
+      wrap.innerHTML = purchaseLines.map(function(l, idx){
+        var qty = l.qty || l.colors.length || 0;
+        var subtotal = qty * (l.baseCost||0);
+        return '<div class="chip-row"><span>'+escapeHtml(l.category)+(l.subcategory?(' — '+escapeHtml(l.subcategory)):'')+
+          ' <span class="muted">('+qty+' pc'+(qty===1?'':'s')+' · '+fmtMoney(subtotal)+')</span></span>'+
+          '<div class="chip-actions"><button data-editline="'+idx+'" title="Edit">Edit</button><button data-delline="'+idx+'" title="Delete">Delete</button></div></div>';
+      }).join("") + '<p class="hint" style="margin-top:8px;">Total: '+fmtNum(totalPieces)+' piece(s) across '+purchaseLines.length+' item(s)</p>';
     }
-    var totalPieces = purchaseLines.reduce(function(s,l){return s+(l.qty||l.colors.length||0);},0);
-    wrap.innerHTML = purchaseLines.map(function(l, idx){
-      var qty = l.qty || l.colors.length || 0;
-      var subtotal = qty * (l.baseCost||0);
-      return '<div class="chip-row"><span>'+escapeHtml(l.category)+(l.subcategory?(' — '+escapeHtml(l.subcategory)):'')+
-        ' <span class="muted">('+qty+' pc'+(qty===1?'':'s')+' · '+fmtMoney(subtotal)+')</span></span>'+
-        '<div class="chip-actions"><button data-editline="'+idx+'" title="Edit">Edit</button><button data-delline="'+idx+'" title="Delete">Delete</button></div></div>';
-    }).join("") + '<p class="hint" style="margin-top:8px;">Total: '+fmtNum(totalPieces)+' piece(s) across '+purchaseLines.length+' item(s)</p>';
     $all("[data-editline]", wrap).forEach(function(btn){
       btn.addEventListener("click", function(){
         var idx = Number(btn.dataset.editline);
@@ -2257,68 +2272,177 @@ function openPurchaseModal(existingPurchase){
         }
       });
     });
+    if(onChange) onChange();
   }
-  if(!isEdit){ renderLinesList(); }
+  renderLinesList();
   $("#btnAddLine").addEventListener("click", function(){
     openPurchaseLineEditor(null, function(newLine){ purchaseLines.push(newLine); renderLinesList(); });
   });
-
-  if(!isEdit){
-    function setMode(m){
-      mode = m;
-      $all("#purModeToggle button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode===m); });
-      $("#grpExisting").style.display = m==="existing" ? "" : "none";
-      $("#grpQty").style.display = m==="existing" ? "" : "none";
-      $("#grpUnitCost").style.display = m==="existing" ? "" : "none";
-      $("#grpUpdateCost").style.display = m==="existing" ? "" : "none";
-      $("#grpBatch").style.display = m==="new" ? "" : "none";
-      $("#grpLines").style.display = m==="new" ? "" : "none";
-    }
-    $all("#purModeToggle button").forEach(function(b){
-      b.addEventListener("click", function(){
-        if(b.dataset.mode==="existing" && !hasItems) return;
-        setMode(b.dataset.mode);
-      });
-    });
-  }
-
-  if(!isEdit){
-    wireSearchableSelect("f_item", function(){return itemChoices();}, function(itemId){
-      var it = findItem(itemId);
-      if(it && it.wholesaler && !wField.value) wField.value = it.wholesaler;
-      if(it) $("#f_cost").value = it.costPrice||"";
-    });
-  }
-  if(isEdit && editItem){ $("#f_cost").value = existingPurchase.unitCost; }
+}
+function openPurchaseModal(){
+  var purchaseLines = [];
+  openModal(
+    '<h3>Add purchase</h3>'+
+    '<div class="form-grid">'+
+      '<div class="field"><label>Wholesaler</label>'+freeComboHtml("f_wholesaler", "", "Supplier name")+'</div>'+
+      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+todayStr()+'"></div>'+
+      '<div class="field full">'+
+        '<label>Additional cost for this purchase — transport, porter, etc. (₹, optional)</label>'+
+        '<input id="f_additional" type="number" min="0" step="1" value="0">'+
+        '<span class="hint">Split evenly across every piece below and baked straight into each one\'s cost price.</span>'+
+      '</div>'+
+      '<div class="field full">'+purchaseLinesListHtml()+'</div>'+
+      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>'+
+    '</div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn ghost" id="f_cancel">Cancel</button>'+
+      '<button class="btn" id="f_save">Record purchase</button>'+
+    '</div>'
+  );
+  var wField = $("#f_wholesaler");
+  wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
+  wirePurchaseLinesList(purchaseLines);
 
   $("#f_cancel").addEventListener("click", closeModal);
   $("#f_save").addEventListener("click", async function(){
     if(!(await validateTxnDate($("#f_date").value))) return;
+    if(purchaseLines.length===0){ toast("Add at least one item to this purchase.", "error"); return; }
     var wholesaler = wField.value.trim(), date = $("#f_date").value||todayStr(), notes = $("#f_notes").value.trim();
-
-    if(isEdit){
-      var qty = Number($("#f_qty").value);
-      var unitCost = Number($("#f_cost").value);
-      if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
-      if(unitCost<0 || $("#f_cost").value===""){ toast("Enter a unit cost.", "error"); return; }
-      await updatePurchase(existingPurchase, {qty:qty, unitCost:unitCost, date:date, wholesaler:wholesaler, notes:notes, updateCost:$("#f_updatecost").checked});
-    } else if(mode==="new"){
-      if(purchaseLines.length===0){ toast("Add at least one item to this purchase.", "error"); return; }
-      var additional = Number($("#f_additional").value)||0;
-      var created = await recordBatchLines(purchaseLines, {wholesaler:wholesaler, date:date, notes:notes}, additional);
-      toast(created+" piece(s) added to inventory.", "success");
-    } else {
-      var qty2 = Number($("#f_qty").value);
-      var unitCost2 = Number($("#f_cost").value);
-      if(!qty2 || qty2<=0){ toast("Enter a valid quantity.", "error"); return; }
-      if(unitCost2<0 || $("#f_cost").value===""){ toast("Enter a unit cost.", "error"); return; }
-      if(!$("#f_item").value){ toast("Choose an item.", "error"); return; }
-      await recordPurchase({
-        itemId:$("#f_item").value, wholesaler:wholesaler, date:date,
-        qty:qty2, unitCost:unitCost2, updateCost:$("#f_updatecost").checked, notes:notes
-      });
-    }
+    var additional = Number($("#f_additional").value)||0;
+    var result = await recordBatchLines(purchaseLines, {wholesaler:wholesaler, date:date, notes:notes}, additional);
+    toast(result.created+" piece(s) added to inventory.", "success");
     closeModal();
+  });
+}
+
+/* ---- purchase modal (edit an already-saved batch) ---- */
+function openBatchEditor(batchId){
+  var pb = state.purchaseBatches.find(function(b){return b.id===batchId;});
+  if(!pb){ toast("Couldn't find this purchase's details.", "error"); return; }
+  if(batchHasSoldPieces(batchId)){
+    appAlert("One or more sarees from this purchase have already been sold, so it can't be edited as a whole any more (that would break the sale's link to it). You can still fix a single saree's details from Inventory — tap it and hit Edit.", "Can't edit this purchase");
+    return;
+  }
+  var purchaseLines = (pb.lines||[]).map(function(l){
+    return {category:l.category, subcategory:l.subcategory||"", baseCost:l.baseCost, basePrice:l.basePrice, qty:l.qty, colors:(l.colors||[]).slice()};
+  });
+  openModal(
+    '<h3>Edit purchase</h3>'+
+    '<div class="form-grid">'+
+      '<div class="field"><label>Wholesaler</label>'+freeComboHtml("f_wholesaler", pb.wholesaler||"", "Supplier name")+'</div>'+
+      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(pb.date||todayStr())+'"></div>'+
+      '<div class="field full">'+
+        '<label>Additional cost for this purchase — transport, porter, etc. (₹, optional)</label>'+
+        '<input id="f_additional" type="number" min="0" step="1" value="'+(pb.additionalCost||0)+'">'+
+        '<span class="hint">Split evenly across every piece below and baked straight into each one\'s cost price.</span>'+
+      '</div>'+
+      '<div class="field full">'+purchaseLinesListHtml()+'</div>'+
+      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(pb.notes||"")+'</textarea></div>'+
+    '</div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn danger" id="f_deletebatch" type="button" style="margin-right:auto;">Delete purchase</button>'+
+      '<button class="btn ghost" id="f_cancel">Cancel</button>'+
+      '<button class="btn" id="f_save">Save changes</button>'+
+    '</div>'
+  );
+  var wField = $("#f_wholesaler");
+  wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
+  wirePurchaseLinesList(purchaseLines);
+
+  $("#f_cancel").addEventListener("click", closeModal);
+  $("#f_deletebatch").addEventListener("click", async function(){
+    var count = pb.pieceCount || purchaseLines.reduce(function(s,l){return s+(l.qty||l.colors.length||0);},0);
+    if(await appConfirm("Delete this whole purchase — "+count+" piece(s) and their stock records? This can't be undone.", {title:"Delete purchase?", confirmLabel:"Delete", danger:true})){
+      closeModal();
+      await deleteBatchPieces(batchId);
+      await db.doc("purchaseBatches/"+batchId).delete();
+      toast("Purchase deleted.", "success");
+    }
+  });
+  $("#f_save").addEventListener("click", async function(){
+    if(!(await validateTxnDate($("#f_date").value))) return;
+    if(purchaseLines.length===0){ toast("Add at least one item, or delete this purchase instead.", "error"); return; }
+    var wholesaler = wField.value.trim(), date = $("#f_date").value||todayStr(), notes = $("#f_notes").value.trim();
+    var additional = Number($("#f_additional").value)||0;
+    closeModal();
+    await deleteBatchPieces(batchId);
+    await recordBatchLines(purchaseLines, {wholesaler:wholesaler, date:date, notes:notes}, additional, batchId);
+    toast("Purchase updated.", "success");
+  });
+}
+
+/* ---- purchase modal (edit a legacy single-piece purchase, from before
+   batches existed — no purchaseBatches snapshot to restore lines from) ---- */
+function openLegacyPurchaseEditor(existingPurchase){
+  openModal(
+    '<h3>Edit purchase</h3>'+
+    '<p class="hint" style="margin:-4px 0 10px 0;">Item: <strong>'+escapeHtml(existingPurchase.itemName)+'</strong> (can\'t be changed — delete and re-add if it was the wrong item)</p>'+
+    '<div class="form-grid">'+
+      '<div class="field"><label>Wholesaler</label>'+freeComboHtml("f_wholesaler", existingPurchase.wholesaler||"", "Supplier name")+'</div>'+
+      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+existingPurchase.date+'"></div>'+
+      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+existingPurchase.qty+'"></div>'+
+      '<div class="field"><label>Unit cost (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+existingPurchase.unitCost+'"></div>'+
+      '<div class="field full"><label><input type="checkbox" id="f_updatecost" style="width:auto;display:inline-block;margin-right:6px;">Update this item\'s cost price to match</label></div>'+
+      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(existingPurchase.notes||"")+'</textarea></div>'+
+    '</div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn ghost" id="f_cancel">Cancel</button>'+
+      '<button class="btn" id="f_save">Save changes</button>'+
+    '</div>'
+  );
+  wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
+  $("#f_cancel").addEventListener("click", closeModal);
+  $("#f_save").addEventListener("click", async function(){
+    if(!(await validateTxnDate($("#f_date").value))) return;
+    var wholesaler = $("#f_wholesaler").value.trim(), date = $("#f_date").value||todayStr(), notes = $("#f_notes").value.trim();
+    var qty = Number($("#f_qty").value);
+    var unitCost = Number($("#f_cost").value);
+    if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
+    if(unitCost<0 || $("#f_cost").value===""){ toast("Enter a unit cost.", "error"); return; }
+    await updatePurchase(existingPurchase, {qty:qty, unitCost:unitCost, date:date, wholesaler:wholesaler, notes:notes, updateCost:$("#f_updatecost").checked});
+    closeModal();
+  });
+}
+
+/* ---- "Edit purchase" picker — pick which past purchase to open ---- */
+function openPurchasePicker(){
+  var groups = {}; // batchId (or legacy purchase id) -> summary
+  state.purchases.forEach(function(p){
+    var key = p.batchId || ("legacy:"+p.id);
+    if(!groups[key]){
+      groups[key] = { key:key, batchId:p.batchId||null, legacyPurchase:p.batchId?null:p, date:p.date, wholesaler:p.wholesaler, count:0, total:0, createdAt:p.createdAt||"" };
+    }
+    groups[key].count += (p.qty||1);
+    groups[key].total += (p.totalCost||0);
+    if(p.date > groups[key].date) groups[key].date = p.date;
+  });
+  var rows = Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a,b){
+    return (b.date+b.createdAt).localeCompare(a.date+a.createdAt);
+  });
+  if(rows.length===0){
+    appAlert("No purchases recorded yet.", "Nothing to edit");
+    return;
+  }
+  var listHtml = rows.map(function(r){
+    return '<div class="chip-row" data-pick="'+r.key+'" style="cursor:pointer;">'+
+      '<span>'+escapeHtml(r.date)+' · '+escapeHtml(r.wholesaler||"—")+'<div class="muted" style="font-size:11.5px;">'+fmtNum(r.count)+' piece'+(r.count===1?'':'s')+' · '+fmtMoney(r.total)+'</div></span>'+
+      '<span class="muted">›</span>'+
+    '</div>';
+  }).join("");
+  openMini(
+    '<h3>Edit purchase</h3>'+
+    '<p class="hint" style="margin:-4px 0 10px 0;">Tap the purchase you want to change.</p>'+
+    '<div class="chip-list" style="max-height:52vh;overflow-y:auto;">'+listHtml+'</div>'+
+    '<div class="modal-actions"><button class="btn ghost" id="pickerCancel">Cancel</button></div>'
+  );
+  $("#pickerCancel").addEventListener("click", closeMini);
+  $all("[data-pick]", $("#miniBox")).forEach(function(row){
+    row.addEventListener("click", function(){
+      var g = groups[row.dataset.pick];
+      closeMini();
+      if(g.batchId) openBatchEditor(g.batchId);
+      else openLegacyPurchaseEditor(g.legacyPurchase);
+    });
   });
 }
 
@@ -2509,6 +2633,7 @@ function openAdjustmentModal(){
 
 $("#btnAddItem").addEventListener("click", function(){ switchTab("purchases"); });
 $("#btnAddPurchase").addEventListener("click", function(){ openPurchaseModal(); });
+$("#btnEditPurchase").addEventListener("click", function(){ openPurchasePicker(); });
 $("#btnAddSale").addEventListener("click", function(){ openSaleModal(); });
 $("#btnAddAdjustment").addEventListener("click", function(){ openAdjustmentModal(); });
 
@@ -2734,20 +2859,18 @@ function renderPurchases(){
     $("#purTable").innerHTML = '<div class="empty">No purchases recorded yet.</div>';
     return;
   }
+  // Editing/deleting a piece that's part of a batch purchase happens through
+  // "Edit purchase" (which keeps the whole batch's saved lines in sync) —
+  // only a legacy single-item purchase (from before batches existed) gets a
+  // direct delete here, since there's no batch snapshot for it to go stale.
   var body = rows.map(function(p){
     return '<tr><td>'+escapeHtml(p.date)+'</td><td>'+escapeHtml(p.itemName)+'</td><td>'+escapeHtml(p.wholesaler||"")+'</td>'+
       '<td class="num">'+fmtNum(p.qty)+'</td><td class="num">'+fmtMoney(p.unitCost)+'</td>'+
       '<td class="num">'+fmtMoney(p.totalCost)+'</td>'+
-      '<td><div class="row-actions"><button class="btn small secondary" data-edit="'+p.id+'">Edit</button><button class="btn small ghost" data-del="'+p.id+'">Delete</button></div></td></tr>';
+      '<td>'+(p.batchId ? '' : '<div class="row-actions"><button class="btn small ghost" data-del="'+p.id+'">Delete</button></div>')+'</td></tr>';
   }).join("");
   $("#purTable").innerHTML = '<table><thead><tr><th>Date</th><th>Item</th><th>Wholesaler</th>'+
     '<th class="num">Qty</th><th class="num">Unit cost</th><th class="num">Total</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
-  $all("[data-edit]", $("#purTable")).forEach(function(btn){
-    btn.addEventListener("click", function(){
-      var p = state.purchases.find(function(x){return x.id===btn.dataset.edit;});
-      if(p) openPurchaseModal(p);
-    });
-  });
   $all("[data-del]", $("#purTable")).forEach(function(btn){
     btn.addEventListener("click", async function(){
       var p = state.purchases.find(function(x){return x.id===btn.dataset.del;});
