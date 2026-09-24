@@ -918,6 +918,7 @@ function subscribeAll(){
       seedDefaultCategories();
     }
     renderCategoryDatalist();
+    if(currentDrawerView==="categories") renderDrawer();
     renderAll();
   }, function(err){ console.error(err); }));
 
