@@ -328,6 +328,29 @@
   .inv-subcat>summary::-webkit-details-marker{display:none;}
   .inv-subcat>summary::before{content:"▸";color:var(--ink-soft);margin-right:6px;font-size:11px;}
   .inv-subcat[open]>summary::before{content:"▾";}
+  .inv-tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
+  .inv-tile{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px;cursor:pointer;transition:box-shadow .15s ease,transform .1s ease;
+    box-shadow:0 1px 2px rgba(0,0,0,0.04);text-align:left;
+  }
+  .inv-tile:active{transform:scale(0.98);}
+  .inv-tile:hover{box-shadow:0 4px 12px rgba(122,31,61,0.14);border-color:var(--gold);}
+  .inv-tile-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-bottom:10px;
+    font-family:var(--font-display);font-size:15.5px;color:var(--maroon);border-bottom:1px solid var(--line);padding-bottom:8px;}
+  .inv-tile-count{font-family:var(--font-body);font-size:11.5px;font-weight:700;color:#fff;background:var(--maroon);
+    border-radius:20px;padding:2px 8px;white-space:nowrap;}
+  .inv-tile-subs{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;min-height:20px;}
+  .inv-tile-sub{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);gap:8px;}
+  .inv-tile-sub span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .inv-tile-sub-count{font-weight:700;color:var(--ink);flex-shrink:0;}
+  .inv-tile-more{font-size:11.5px;color:var(--gold);font-weight:600;}
+  .inv-tile-value{font-size:11.5px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:8px;}
+  .inv-back-btn{background:none;border:none;color:var(--maroon);font-weight:700;font-size:13.5px;
+    padding:6px 0 14px 0;cursor:pointer;display:flex;align-items:center;gap:4px;}
+  .inv-cat-detail-head{margin-bottom:12px;}
+  .inv-cat-detail-head h3{font-family:var(--font-display);color:var(--maroon);font-size:19px;margin:0 0 2px 0;}
+  .inv-cat-detail-head p{margin:0;}
   .photo-upload{display:flex;align-items:center;gap:14px;}
   .photo-preview{
     width:76px;height:76px;border-radius:10px;object-fit:cover;
@@ -536,7 +559,7 @@
       <button class="btn" id="btnAddPurchase">+ Record purchase</button>
     </div>
     <div class="filters">
-      <label>Wholesaler<input type="text" id="purWholesalerFilter" placeholder="Filter by wholesaler"></label>
+      <label>Wholesaler<div id="purWholesalerFilterWrap"></div></label>
       <label>From<input type="date" id="purFrom"></label>
       <label>To<input type="date" id="purTo"></label>
     </div>
@@ -2010,7 +2033,7 @@ function openPurchaseLineEditor(existingLine, onSave){
   openMini(
     '<h3>'+(existingLine?'Edit item':'Add item to this purchase')+'</h3>'+
     '<div class="form-grid">'+
-      '<div class="field"><label>Category</label>'+freeComboHtml("pl_category", line.category, "Tap to choose or type new")+'</div>'+
+      '<div class="field"><label>Category</label>'+freeComboHtml("pl_category", line.category, "Tap to choose or type a new one")+'<span class="hint">Typing a new name here saves it automatically — no need to add it separately.</span></div>'+
       '<div class="field"><label>Subcategory</label>'+freeComboHtml("pl_subcategory", line.subcategory, "e.g. Ajrak Handblock")+'</div>'+
       '<div class="field"><label>Quantity (pieces)</label><input id="pl_qty" type="number" min="1" step="1" value="'+line.qty+'"></div>'+
       '<div class="field"><label>Cost price per piece (₹)</label><input id="pl_cost" type="number" min="0" step="1" value="'+(line.baseCost===""||line.baseCost===undefined?"":line.baseCost)+'"></div>'+
@@ -2085,38 +2108,56 @@ function openPurchaseLineEditor(existingLine, onSave){
 /* Creates one inventory piece (unique SKU, stock 1) + one purchase record +
    one stock-log entry per color across every line in a batch purchase,
    splitting any shared additional cost (transport/porter) evenly across
-   every piece so it's baked into each piece's cost price automatically. */
+   every piece so it's baked into each piece's cost price automatically.
+   Each piece's 3 documents are written together in one Firestore batch
+   (all-or-nothing) instead of 3 separate sequential writes — a dropped
+   connection mid-save on a phone used to be able to leave an inventory
+   piece behind with no matching stock-in log entry (harmless to your
+   actual stock count, but it made "Stock in" totals in Reports drift
+   slightly from Dashboard's live inventory count). */
 async function recordBatchLines(lines, meta, additionalCost){
   if(state.dbOffline){ toast("Please log in first.", "error"); return 0; }
   var totalPieces = lines.reduce(function(s,l){return s+(l.qty||l.colors.length||0);}, 0);
   var perPieceExtra = totalPieces>0 ? (additionalCost||0)/totalPieces : 0;
-  var created = 0;
+  var pieces = [];
   for(var li=0; li<lines.length; li++){
     var line = lines[li];
     var pieceCount = line.qty || line.colors.length || 0;
     var displayName = line.category + (line.subcategory ? (" "+line.subcategory) : "");
     for(var ci=0; ci<pieceCount; ci++){
-      var color = (line.colors[ci]||"").trim();
+      pieces.push({ line: line, color: (line.colors[ci]||"").trim(), displayName: displayName });
+    }
+  }
+  var created = 0;
+  var CHUNK = 150; // 3 writes/piece — stays well under Firestore's 500-write batch limit
+  for(var start=0; start<pieces.length; start+=CHUNK){
+    var batch = firestore.batch();
+    pieces.slice(start, start+CHUNK).forEach(function(pc){
+      var line = pc.line, color = pc.color, displayName = pc.displayName;
       var finalCost = Math.round(((line.baseCost||0) + perPieceExtra)*100)/100;
-      var ref = await db.collection("inventory").add({
+      var itemRef = db.collection("inventory").doc();
+      var pRef = db.collection("purchases").doc();
+      var logRef = db.collection("stockLog").doc();
+      batch.set(itemRef, {
         name: displayName, sku: genSku(line.subcategory||line.category), category: line.category,
         subcategory: line.subcategory||"", color: color, wholesaler: meta.wholesaler,
         costPrice: finalCost, baseCostPrice: line.baseCost||0, sellingPrice: line.basePrice||0, stock: 1, reorderLevel: 0,
         notes:"", photoData:null, createdAt: nowIso()
       });
-      var pRef = await db.collection("purchases").add({
-        date: meta.date, wholesaler: meta.wholesaler, itemId: ref.id,
+      batch.set(pRef, {
+        date: meta.date, wholesaler: meta.wholesaler, itemId: itemRef.id,
         itemName: displayName+(color?(" — "+color):""),
         qty: 1, unitCost: finalCost, totalCost: finalCost,
         notes: (perPieceExtra ? ("Includes ₹"+perPieceExtra.toFixed(0)+" share of this purchase's additional cost. ") : "")+(meta.notes||""),
         createdAt: nowIso()
       });
-      await db.collection("stockLog").add({
-        date: meta.date, type:"in", itemId: ref.id, itemName: displayName, qty:1,
+      batch.set(logRef, {
+        date: meta.date, type:"in", itemId: itemRef.id, itemName: displayName, qty:1,
         reason:"Purchase", detail: meta.wholesaler, refType:"purchase", refId: pRef.id, createdAt: nowIso()
       });
       created++;
-    }
+    });
+    await batch.commit();
   }
   return created;
 }
@@ -2555,7 +2596,7 @@ function renderInventory(){
       (i.color||"").toLowerCase().indexOf(q)>=0 || (i.sku||"").toLowerCase().indexOf(q)>=0;
   });
 
-  if(rows.length===0){
+  if(rows.length===0 && !catFilter){
     $("#invTable").innerHTML = '<div class="empty">No items match this filter.</div>';
     return;
   }
@@ -2571,6 +2612,43 @@ function renderInventory(){
     return;
   }
 
+  if(catFilter){
+    renderInventoryCategoryDetail(rows, catFilter);
+  } else {
+    renderInventoryCategoryTiles(rows);
+  }
+}
+function groupBySubcategory(rows){
+  var subs = {};
+  rows.forEach(function(i){
+    var sub = i.subcategory || "(No subcategory)";
+    if(!subs[sub]) subs[sub] = [];
+    subs[sub].push(i);
+  });
+  return subs;
+}
+function subcatDetailsHtml(subs){
+  var subNames = Object.keys(subs).sort();
+  return subNames.map(function(sub){
+    var pieces = subs[sub].slice().sort(function(a,b){return (a.color||"").localeCompare(b.color||"");});
+    var inStock = pieces.filter(function(p){return (p.stock||0)>0;}).length;
+    var piecesHtml = pieces.map(function(p){
+      return '<tr>'+
+        '<td class="photo-col">'+(p.photoData ? '<img class="thumb" src="'+p.photoData+'">' : '<div class="thumb-placeholder">🥻</div>')+'</td>'+
+        '<td>'+escapeHtml(p.color||"—")+'<div class="muted" style="font-size:11px;">'+escapeHtml(p.sku||"")+'</div></td>'+
+        '<td class="num">'+fmtMoney(p.costPrice)+'</td>'+
+        '<td class="num">'+fmtMoney(p.sellingPrice)+'</td>'+
+        '<td><span class="tag '+((p.stock||0)>0?'ok':'low')+'">'+((p.stock||0)>0?'In stock':'Sold')+'</span></td>'+
+        '<td><button class="btn small secondary" data-edit="'+p.id+'">Edit</button></td>'+
+      '</tr>';
+    }).join("");
+    return '<details class="inv-subcat">'+
+      '<summary>'+escapeHtml(sub)+' <span class="muted">— '+inStock+' in stock of '+pieces.length+'</span></summary>'+
+      '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th></th><th>Color / SKU</th><th class="num">Cost</th><th class="num">Price</th><th>Status</th><th></th></tr></thead><tbody>'+piecesHtml+'</tbody></table></div>'+
+    '</details>';
+  }).join("");
+}
+function renderInventoryCategoryTiles(rows){
   var byCategory = {};
   rows.forEach(function(i){
     var cat = i.category || "(No category)";
@@ -2580,35 +2658,41 @@ function renderInventory(){
     byCategory[cat][sub].push(i);
   });
   var catNames = Object.keys(byCategory).sort();
-  var html = catNames.map(function(cat){
+  var html = '<div class="inv-tile-grid">'+catNames.map(function(cat){
     var subs = byCategory[cat];
     var subNames = Object.keys(subs).sort();
     var catCount = subNames.reduce(function(s,sn){return s+subs[sn].length;},0);
     var catValue = subNames.reduce(function(s,sn){return s+subs[sn].reduce(function(ss,p){return ss+(p.stock||0)*(p.costPrice||0);},0);},0);
-    var subsHtml = subNames.map(function(sub){
-      var pieces = subs[sub].slice().sort(function(a,b){return (a.color||"").localeCompare(b.color||"");});
-      var inStock = pieces.filter(function(p){return (p.stock||0)>0;}).length;
-      var piecesHtml = pieces.map(function(p){
-        return '<tr>'+
-          '<td class="photo-col">'+(p.photoData ? '<img class="thumb" src="'+p.photoData+'">' : '<div class="thumb-placeholder">🥻</div>')+'</td>'+
-          '<td>'+escapeHtml(p.color||"—")+'<div class="muted" style="font-size:11px;">'+escapeHtml(p.sku||"")+'</div></td>'+
-          '<td class="num">'+fmtMoney(p.costPrice)+'</td>'+
-          '<td class="num">'+fmtMoney(p.sellingPrice)+'</td>'+
-          '<td><span class="tag '+((p.stock||0)>0?'ok':'low')+'">'+((p.stock||0)>0?'In stock':'Sold')+'</span></td>'+
-          '<td><button class="btn small secondary" data-edit="'+p.id+'">Edit</button></td>'+
-        '</tr>';
-      }).join("");
-      return '<details class="inv-subcat">'+
-        '<summary>'+escapeHtml(sub)+' <span class="muted">— '+inStock+' in stock of '+pieces.length+'</span></summary>'+
-        '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th></th><th>Color / SKU</th><th class="num">Cost</th><th class="num">Price</th><th>Status</th><th></th></tr></thead><tbody>'+piecesHtml+'</tbody></table></div>'+
-      '</details>';
-    }).join("");
-    return '<details class="inv-category" open>'+
-      '<summary><strong>'+escapeHtml(cat)+'</strong> <span class="muted">— '+catCount+' piece'+(catCount===1?'':'s')+' · '+fmtMoney(catValue)+' stock value</span></summary>'+
-      '<div class="inv-subcat-wrap">'+subsHtml+'</div>'+
-    '</details>';
-  }).join("");
+    var shown = subNames.slice(0,4);
+    var subsHtml = shown.map(function(sn){
+      return '<div class="inv-tile-sub"><span>'+escapeHtml(sn)+'</span><span class="inv-tile-sub-count">'+subs[sn].length+'</span></div>';
+    }).join("") + (subNames.length>4 ? '<div class="inv-tile-more">+'+(subNames.length-4)+' more</div>' : '');
+    return '<div class="inv-tile" data-cat="'+escapeHtml(cat)+'">'+
+      '<div class="inv-tile-head"><span>'+escapeHtml(cat)+'</span><span class="inv-tile-count">'+catCount+'</span></div>'+
+      '<div class="inv-tile-subs">'+subsHtml+'</div>'+
+      '<div class="inv-tile-value">'+fmtMoney(catValue)+' stock value</div>'+
+    '</div>';
+  }).join("")+'</div>';
   $("#invTable").innerHTML = html;
+  $all(".inv-tile", $("#invTable")).forEach(function(t){
+    t.addEventListener("click", function(){
+      $("#invCategoryFilter").value = t.dataset.cat;
+      renderInventory();
+    });
+  });
+}
+function renderInventoryCategoryDetail(rows, cat){
+  var subs = groupBySubcategory(rows);
+  var catCount = rows.length;
+  var catValue = rows.reduce(function(s,p){return s+(p.stock||0)*(p.costPrice||0);},0);
+  $("#invTable").innerHTML =
+    '<button type="button" class="inv-back-btn" id="invBack">‹ All categories</button>'+
+    '<div class="inv-cat-detail-head"><h3>'+escapeHtml(cat)+'</h3><p class="muted">'+catCount+' piece'+(catCount===1?'':'s')+' · '+fmtMoney(catValue)+' stock value</p></div>'+
+    '<div class="inv-subcat-wrap">'+(rows.length ? subcatDetailsHtml(subs) : '<span class="hint">No items in this category.</span>')+'</div>';
+  $("#invBack").addEventListener("click", function(){
+    $("#invCategoryFilter").value = "";
+    renderInventory();
+  });
   wireInventoryEditButtons();
 }
 $("#invSearch").addEventListener("input", renderInventory);
@@ -2650,7 +2734,12 @@ function renderPurchases(){
     });
   });
 }
+$("#purWholesalerFilterWrap").innerHTML = freeComboHtml("purWholesalerFilter", "", "Tap to choose or type to search…");
+wireFreeCombo("purWholesalerFilter", function(){ return state.wholesalers.map(function(w){return w.name;}); });
 $("#purWholesalerFilter").addEventListener("input", renderPurchases);
+$("#purWholesalerFilter_dl").addEventListener("click", function(e){
+  if(e.target.closest(".combo-item")) renderPurchases();
+});
 wireDateRange("purFrom", "purTo", renderPurchases);
 
 /* ---------------- render: sales ---------------- */
