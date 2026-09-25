@@ -2328,9 +2328,8 @@ function openBatchEditor(batchId){
   });
   openModal(
     '<h3>Edit purchase</h3>'+
+    '<p class="hint" style="margin:-4px 0 10px 0;">'+escapeHtml(pb.date||"")+' · <strong>'+escapeHtml(pb.wholesaler||"—")+'</strong><br>Wholesaler and date can\'t be changed here — delete this purchase and re-add it if those were wrong.</p>'+
     '<div class="form-grid">'+
-      '<div class="field"><label>Wholesaler</label>'+freeComboHtml("f_wholesaler", pb.wholesaler||"", "Supplier name")+'</div>'+
-      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(pb.date||todayStr())+'"></div>'+
       '<div class="field full">'+
         '<label>Additional cost for this purchase — transport, porter, etc. (₹, optional)</label>'+
         '<input id="f_additional" type="number" min="0" step="1" value="'+(pb.additionalCost||0)+'">'+
@@ -2345,8 +2344,6 @@ function openBatchEditor(batchId){
       '<button class="btn" id="f_save">Save changes</button>'+
     '</div>'
   );
-  var wField = $("#f_wholesaler");
-  wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
   wirePurchaseLinesList(purchaseLines);
 
   $("#f_cancel").addEventListener("click", closeModal);
@@ -2360,61 +2357,151 @@ function openBatchEditor(batchId){
     }
   });
   $("#f_save").addEventListener("click", async function(){
-    if(!(await validateTxnDate($("#f_date").value))) return;
     if(purchaseLines.length===0){ toast("Add at least one item, or delete this purchase instead.", "error"); return; }
-    var wholesaler = wField.value.trim(), date = $("#f_date").value||todayStr(), notes = $("#f_notes").value.trim();
+    var notes = $("#f_notes").value.trim();
     var additional = Number($("#f_additional").value)||0;
     closeModal();
     await deleteBatchPieces(batchId);
-    await recordBatchLines(purchaseLines, {wholesaler:wholesaler, date:date, notes:notes}, additional, batchId);
+    await recordBatchLines(purchaseLines, {wholesaler:pb.wholesaler, date:pb.date, notes:notes}, additional, batchId);
     toast("Purchase updated.", "success");
   });
 }
 
-/* ---- purchase modal (edit a legacy single-piece purchase, from before
-   batches existed — no purchaseBatches snapshot to restore lines from) ---- */
-function openLegacyPurchaseEditor(existingPurchase){
-  openModal(
-    '<h3>Edit purchase</h3>'+
-    '<p class="hint" style="margin:-4px 0 10px 0;">Item: <strong>'+escapeHtml(existingPurchase.itemName)+'</strong> (can\'t be changed — delete and re-add if it was the wrong item)</p>'+
+
+/* ---- edit a single saree from within a purchase, in place — used by the
+   legacy session editor below. Doesn't delete/recreate anything, so it's
+   safe even if the piece has already been sold. ---- */
+function openPieceEditor(p, onSaved){
+  var item = findItem(p.itemId);
+  if(!item){ toast("Couldn't find this item.", "error"); return; }
+  openMini(
+    '<h3>Edit item</h3>'+
     '<div class="form-grid">'+
-      '<div class="field"><label>Wholesaler</label>'+freeComboHtml("f_wholesaler", existingPurchase.wholesaler||"", "Supplier name")+'</div>'+
-      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+existingPurchase.date+'"></div>'+
-      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+existingPurchase.qty+'"></div>'+
-      '<div class="field"><label>Unit cost (₹)</label><input id="f_cost" type="number" min="0" step="1" value="'+existingPurchase.unitCost+'"></div>'+
-      '<div class="field full"><label><input type="checkbox" id="f_updatecost" style="width:auto;display:inline-block;margin-right:6px;">Update this item\'s cost price to match</label></div>'+
-      '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(existingPurchase.notes||"")+'</textarea></div>'+
+      '<div class="field"><label>Category</label>'+freeComboHtml("pe_category", item.category||"", "")+'</div>'+
+      '<div class="field"><label>Subcategory</label>'+freeComboHtml("pe_subcategory", item.subcategory||"", "")+'</div>'+
+      '<div class="field"><label>Color (optional)</label><input id="pe_color" type="text" value="'+escapeHtml(item.color||"")+'"></div>'+
+      '<div class="field"><label>Cost price (₹)</label><input id="pe_cost" type="number" min="0" step="1" value="'+(item.baseCostPrice!=null?item.baseCostPrice:(item.costPrice||""))+'"></div>'+
+      '<div class="field"><label>Selling price (₹)</label><input id="pe_price" type="number" min="0" step="1" value="'+(item.sellingPrice||0)+'"></div>'+
     '</div>'+
     '<div class="modal-actions">'+
-      '<button class="btn ghost" id="f_cancel">Cancel</button>'+
-      '<button class="btn" id="f_save">Save changes</button>'+
+      '<button class="btn ghost" id="pe_cancel">Cancel</button>'+
+      '<button class="btn" id="pe_save">Save</button>'+
     '</div>'
   );
-  wireFreeCombo("f_wholesaler", function(){ return state.wholesalers.map(function(w){return w.name;}); });
-  $("#f_cancel").addEventListener("click", closeModal);
-  $("#f_save").addEventListener("click", async function(){
-    if(!(await validateTxnDate($("#f_date").value))) return;
-    var wholesaler = $("#f_wholesaler").value.trim(), date = $("#f_date").value||todayStr(), notes = $("#f_notes").value.trim();
-    var qty = Number($("#f_qty").value);
-    var unitCost = Number($("#f_cost").value);
-    if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
-    if(unitCost<0 || $("#f_cost").value===""){ toast("Enter a unit cost.", "error"); return; }
-    await updatePurchase(existingPurchase, {qty:qty, unitCost:unitCost, date:date, wholesaler:wholesaler, notes:notes, updateCost:$("#f_updatecost").checked});
-    closeModal();
+  wireFreeCombo("pe_category", function(){ return state.categories.length ? state.categories.map(function(c){return c.name;}) : DEFAULT_CATEGORIES; });
+  wireFreeCombo("pe_subcategory", function(){ return subcategoriesFor($("#pe_category").value.trim()); });
+  $("#pe_cancel").addEventListener("click", closeMini);
+  $("#pe_save").addEventListener("click", async function(){
+    var category = $("#pe_category").value.trim();
+    var subcategory = $("#pe_subcategory").value.trim();
+    var color = $("#pe_color").value.trim();
+    var cost = Number($("#pe_cost").value);
+    var price = Number($("#pe_price").value)||0;
+    if(!category){ toast("Category is required.", "error"); return; }
+    if(!cost || $("#pe_cost").value===""){ toast("Enter a cost price.", "error"); return; }
+    addCategoryQuick(category);
+    var displayName = category + (subcategory?(" "+subcategory):"");
+    await db.doc("inventory/"+item.id).update({category:category, subcategory:subcategory, color:color, costPrice:cost, baseCostPrice:cost, sellingPrice:price, name:displayName});
+    await db.doc("purchases/"+p.id).update({itemName:displayName+(color?(" — "+color):""), unitCost:cost, totalCost:cost*(p.qty||1)});
+    toast("Item updated.", "success");
+    closeMini();
+    if(onSaved) onSaved();
+  });
+}
+/* Deletes one saree entirely — its inventory piece, purchase record and
+   stock-log entry together. Used for removing a wrongly-added item from a
+   purchase (not for reducing stock on a shared item, since every saree has
+   its own unique SKU). Blocked if the saree's already been sold. */
+async function deleteSinglePiece(p){
+  if(state.dbOffline) return;
+  if(state.sales.some(function(s){return s.itemId===p.itemId;})){
+    appAlert("This saree has already been sold, so it can't be removed from here.", "Can't remove");
+    return false;
+  }
+  var logEntry = state.stockLog.find(function(l){ return l.refType==="purchase" && l.refId===p.id; });
+  var batch = firestore.batch();
+  batch.delete(db.doc("inventory/"+p.itemId));
+  batch.delete(db.doc("purchases/"+p.id));
+  if(logEntry) batch.delete(db.doc("stockLog/"+logEntry.id));
+  await batch.commit();
+  toast("Item removed.", "success");
+  return true;
+}
+/* ---- purchase modal (edit a purchase made before "batches" existed — a
+   group of sarees that share the same date + wholesaler, with no single
+   lines snapshot to restore. Wholesaler/date are locked, same as the newer
+   batch editor; each saree can be edited or removed individually, and new
+   ones can be added — they'll be tagged with the same date + wholesaler
+   so they group into this same purchase from now on. ---- */
+function openLegacySessionEditor(pieces, meta){
+  function renderList(){
+    var wrap = $("#sessLinesList");
+    if(pieces.length===0){
+      wrap.innerHTML = '<div class="empty" style="padding:14px 10px;">No items left in this purchase.</div>';
+      return;
+    }
+    var sorted = pieces.slice().sort(function(a,b){ return (a.itemName||"").localeCompare(b.itemName||""); });
+    wrap.innerHTML = sorted.map(function(p){
+      return '<div class="chip-row"><span>'+escapeHtml(p.itemName)+' <span class="muted">('+fmtMoney(p.unitCost)+')</span></span>'+
+        '<div class="chip-actions"><button data-editpiece="'+p.id+'" title="Edit">Edit</button><button data-delpiece="'+p.id+'" title="Remove">Remove</button></div></div>';
+    }).join("");
+    $all("[data-editpiece]", wrap).forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var p = pieces.find(function(x){return x.id===btn.dataset.editpiece;});
+        if(p) openPieceEditor(p, renderList);
+      });
+    });
+    $all("[data-delpiece]", wrap).forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        var p = pieces.find(function(x){return x.id===btn.dataset.delpiece;});
+        if(!p) return;
+        if(await appConfirm("Remove "+p.itemName+" from this purchase? This deletes it from inventory too.", {title:"Remove item?", confirmLabel:"Remove", danger:true})){
+          var ok = await deleteSinglePiece(p);
+          if(ok){ pieces = pieces.filter(function(x){return x.id!==p.id;}); renderList(); }
+        }
+      });
+    });
+  }
+  openModal(
+    '<h3>Edit purchase</h3>'+
+    '<p class="hint" style="margin:-4px 0 10px 0;">'+escapeHtml(meta.date)+' · <strong>'+escapeHtml(meta.wholesaler||"—")+'</strong><br>Wholesaler and date can\'t be changed here.</p>'+
+    '<div class="field full"><div id="sessLinesList"></div>'+
+      '<button type="button" class="btn secondary small" id="sessAddLine" style="margin-top:8px;">+ Add item to this purchase</button>'+
+    '</div>'+
+    '<div class="modal-actions"><button class="btn ghost" id="sessClose">Close</button></div>'
+  );
+  renderList();
+  $("#sessClose").addEventListener("click", closeModal);
+  $("#sessAddLine").addEventListener("click", function(){
+    openPurchaseLineEditor(null, async function(newLine){
+      var result = await recordBatchLines([newLine], {wholesaler:meta.wholesaler, date:meta.date, notes:""}, 0);
+      toast(result.created+" item(s) added.", "success");
+      setTimeout(function(){
+        pieces = state.purchases.filter(function(p){
+          return !p.batchId && p.date===meta.date && (p.wholesaler||"").toLowerCase()===(meta.wholesaler||"").toLowerCase();
+        });
+        renderList();
+      }, 500);
+    });
   });
 }
 
-/* ---- "Edit purchase" picker — pick which past purchase to open ---- */
+/* ---- "Edit purchase" picker — pick which past purchase to open. Groups by
+   batchId where one exists; older purchases from before batches existed
+   are grouped by date + wholesaler instead, so they still open as one
+   purchase rather than one row per saree. ---- */
 function openPurchasePicker(){
-  var groups = {}; // batchId (or legacy purchase id) -> summary
+  var groups = {};
   state.purchases.forEach(function(p){
-    var key = p.batchId || ("legacy:"+p.id);
+    var key = p.batchId ? ("batch:"+p.batchId) : ("legacy:"+p.date+"|"+(p.wholesaler||"").toLowerCase());
     if(!groups[key]){
-      groups[key] = { key:key, batchId:p.batchId||null, legacyPurchase:p.batchId?null:p, date:p.date, wholesaler:p.wholesaler, count:0, total:0, createdAt:p.createdAt||"" };
+      groups[key] = { key:key, batchId:p.batchId||null, pieces:[], date:p.date, wholesaler:p.wholesaler, count:0, total:0, createdAt:p.createdAt||"" };
     }
+    groups[key].pieces.push(p);
     groups[key].count += (p.qty||1);
     groups[key].total += (p.totalCost||0);
     if(p.date > groups[key].date) groups[key].date = p.date;
+    if(p.createdAt && p.createdAt > groups[key].createdAt) groups[key].createdAt = p.createdAt;
   });
   var rows = Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a,b){
     return (b.date+b.createdAt).localeCompare(a.date+a.createdAt);
@@ -2441,7 +2528,7 @@ function openPurchasePicker(){
       var g = groups[row.dataset.pick];
       closeMini();
       if(g.batchId) openBatchEditor(g.batchId);
-      else openLegacyPurchaseEditor(g.legacyPurchase);
+      else openLegacySessionEditor(g.pieces, {date:g.date, wholesaler:g.wholesaler});
     });
   });
 }
