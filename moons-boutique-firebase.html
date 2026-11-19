@@ -455,6 +455,33 @@
     .form-grid{grid-template-columns:1fr;}
     .cards{grid-template-columns:1fr 1fr;}
   }
+th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+th.sortable .sort-arrow{font-size:10px;opacity:.45;margin-left:2px;}
+th.sortable.sorted .sort-arrow{opacity:1;}
+
+  .rep-panel h3{margin-bottom:4px;}
+  .rep-take{font-size:13px;color:var(--ink-soft);margin:0 0 12px 0;line-height:1.45;}
+  .rep-take b{color:var(--ink);}
+  .rep-note{font-size:12.5px;color:var(--ink-soft);margin:-4px 0 14px;}
+  .rep-svg{width:100%;height:auto;display:block;}
+  .rep-svg .grid{stroke:var(--line);stroke-width:1;}
+  .rep-svg .zero{stroke:var(--ink-soft);stroke-width:1;}
+  .rep-svg .ax{font-size:16px;fill:var(--ink-soft);font-family:var(--font-body);}
+  .rep-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-bottom:6px;}
+  .rep-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+  .hbars{display:flex;flex-direction:column;gap:12px;}
+  .hb-top{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;margin-bottom:4px;}
+  .hb-label{font-weight:600;}
+  .hb-val{font-weight:600;color:var(--maroon);white-space:nowrap;}
+  .hb-track{background:var(--cream);border-radius:6px;height:9px;overflow:hidden;}
+  .hb-fill{height:100%;background:var(--maroon);border-radius:6px;min-width:2px;}
+  .hb-fill.neg{background:var(--danger);}
+  .hb-fill.warn{background:var(--gold);}
+  .hb-fill.good{background:var(--success);}
+  .hb-note{font-size:11.5px;color:var(--ink-soft);margin-top:3px;}
+  .card.kpi .kpi-sub{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .card.kpi.good .value{color:var(--success);}
+  .card.kpi.bad .value{color:var(--danger);}
 </style>
 </head>
 <body>
@@ -689,7 +716,7 @@ function escapeHtml(s){
   });
 }
 function saleProfit(s){
-  return saleProfit(s) - (s.deliveryCharge||0);
+  return (s.totalPrice||0) - ((s.qty||0)*(s.costPriceAtSale||0)) - (s.deliveryCharge||0);
 }
 function fmtMoney(n){
   n = Number(n)||0;
@@ -927,6 +954,20 @@ function firebaseErrorMessage(e){
   return map[code] || (e && e.message) || "Something went wrong. Please try again.";
 }
 
+function tsMillis(v){
+  if(!v) return Number.MAX_SAFE_INTEGER; // pending server timestamp => newest
+  if(typeof v.toMillis==="function") return v.toMillis();
+  if(v.seconds!=null) return v.seconds*1000;
+  var t=Date.parse(v); return isNaN(t)?0:t;
+}
+function sortNewestFirst(arr){
+  arr.sort(function(a,b){
+    var da=(a.date||""), db_=(b.date||"");
+    if(da!==db_) return db_.localeCompare(da);
+    return tsMillis(b.createdAt)-tsMillis(a.createdAt);
+  });
+}
+
 function subscribeAll(){
   unsubscribers.push(db.collection("members").onSnapshot(function(snap){
     state.members = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
@@ -940,8 +981,9 @@ function subscribeAll(){
     renderAll();
   }, function(err){ console.error(err); toast("Inventory sync error: "+err.message, "error"); }));
 
-  unsubscribers.push(db.collection("purchases").orderBy("createdAt","desc").onSnapshot(function(snap){
+  unsubscribers.push(db.collection("purchases").onSnapshot(function(snap){
     state.purchases = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    sortNewestFirst(state.purchases);
     renderAll();
   }, function(err){ console.error(err); }));
 
@@ -950,13 +992,15 @@ function subscribeAll(){
     renderAll();
   }, function(err){ console.error(err); }));
 
-  unsubscribers.push(db.collection("sales").orderBy("createdAt","desc").onSnapshot(function(snap){
+  unsubscribers.push(db.collection("sales").onSnapshot(function(snap){
     state.sales = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    sortNewestFirst(state.sales);
     renderAll();
   }, function(err){ console.error(err); }));
 
-  unsubscribers.push(db.collection("stockLog").orderBy("createdAt","desc").onSnapshot(function(snap){
+  unsubscribers.push(db.collection("stockLog").onSnapshot(function(snap){
     state.stockLog = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    sortNewestFirst(state.stockLog);
     renderAll();
   }, function(err){ console.error(err); }));
 
@@ -1882,7 +1926,7 @@ function wireSearchableSelect(fieldId, choices, onChange){
     hidden.value = match ? match.value : "";
     if(onChange) onChange(hidden.value, match);
   }
-  q.addEventListener("focus", function(){ renderDropdown(q.value); });
+  q.addEventListener("focus", function(){ renderDropdown(""); try{ q.select(); }catch(e){} });
   q.addEventListener("input", function(){ renderDropdown(q.value); sync(); });
   q.addEventListener("blur", function(){ setTimeout(function(){ listEl.classList.remove("open"); }, 180); });
   listEl.addEventListener("mousedown", function(e){ e.preventDefault(); });
@@ -2567,7 +2611,7 @@ function openSaleModal(existingSale){
       '<div class="field" id="grpDeliveryCharge" style="display:none;"><label>Delivery charge (₹)</label><input id="f_deliverycharge" type="number" min="0" step="1" value="'+(isEdit&&existingSale.deliveryCharge?existingSale.deliveryCharge:"")+'"></div>'+
       '<div class="field" id="grpDeliveryCity" style="display:none;"><label>Delivery town/city</label><input id="f_deliverycity" value="'+escapeHtml(isEdit?(existingSale.deliveryCity||""):"")+'" placeholder="e.g. Pune"></div>'+
       '<div class="field" id="grpDeliveryPincode" style="display:none;"><label>Pincode</label><input id="f_deliverypincode" value="'+escapeHtml(isEdit?(existingSale.deliveryPincode||""):"")+'" placeholder="e.g. 411001"></div>'+
-      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingSale.date:todayStr())+'"></div>'+
+      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingSale.date:todayStr())+'"><div id="f_datehint" class="muted" style="font-size:12px;margin-top:4px;"></div></div>'+
       '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingSale.qty:1)+'"></div>'+
       '<div class="field"><label>List price (₹)</label><input id="f_listprice" type="number" min="0" step="1" value="'+(isEdit?existingSale.listPriceAtSale:"")+'"></div>'+
       '<div class="field"><label>Sold at (₹)</label><input id="f_price" type="number" min="0" step="1" value="'+(isEdit?existingSale.unitPrice:"")+'"></div>'+
@@ -2638,8 +2682,23 @@ function openSaleModal(existingSale){
     $("#grpDeliveryCity").style.display = ch==="Online" ? "" : "none";
     $("#grpDeliveryPincode").style.display = ch==="Online" ? "" : "none";
   }
+  function syncExhibitionDates(){
+    var d = $("#f_date");
+    d.removeAttribute("min"); d.removeAttribute("max");
+    var hint = $("#f_datehint"); if(hint) hint.textContent = "";
+    if($("#f_channel").value!=="Exhibition") return;
+    var ex = state.exhibitions.find(function(x){ return x.id===$("#f_exhibition").value; });
+    if(!ex || !ex.startDate) return;
+    var end = ex.endDate || ex.startDate;
+    d.min = ex.startDate; d.max = end;
+    if(d.value < ex.startDate) d.value = ex.startDate;
+    if(d.value > end) d.value = end;
+    if(hint) hint.textContent = "Exhibition runs "+ex.startDate+(end!==ex.startDate?" to "+end:"")+" — date is limited to this range.";
+  }
   syncChannelFields();
-  $("#f_channel").addEventListener("change", syncChannelFields);
+  syncExhibitionDates();
+  $("#f_channel").addEventListener("change", function(){ syncChannelFields(); syncExhibitionDates(); });
+  $("#f_exhibition").addEventListener("change", syncExhibitionDates);
   $("#btnQuickExhibition").addEventListener("click", function(){
     openExhibitionEditor(null, function(newId, newData){
       var sel = $("#f_exhibition");
@@ -2647,6 +2706,7 @@ function openSaleModal(existingSale){
       opt.value = newId; opt.textContent = newData.name + (newData.startDate ? (" — "+newData.startDate+(newData.endDate&&newData.endDate!==newData.startDate?(" to "+newData.endDate):"")) : "");
       sel.appendChild(opt);
       sel.value = newId;
+      syncExhibitionDates();
     });
   });
   $("#f_qty").addEventListener("input", updateDiscountHint);
@@ -2662,6 +2722,13 @@ function openSaleModal(existingSale){
     var listPrice = Number($("#f_listprice").value)||price;
     if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
     if(price<0 || $("#f_price").value===""){ toast("Enter the price it sold at.", "error"); return; }
+    if($("#f_channel").value==="Exhibition"){
+      var exSel = state.exhibitions.find(function(x){ return x.id===$("#f_exhibition").value; });
+      if(exSel && exSel.startDate){
+        var exEnd = exSel.endDate || exSel.startDate, dv = $("#f_date").value;
+        if(dv < exSel.startDate || dv > exEnd){ toast("Date must be within the exhibition ("+exSel.startDate+" to "+exEnd+").", "error"); return; }
+      }
+    }
     if(!(await validateTxnDate($("#f_date").value))) return;
     if(!isEdit && it && qty > it.stock){
       if(!(await appConfirm("Only "+it.stock+" in stock but you're selling "+qty+". Stock will be set to 0. Continue?", {title:"Not enough stock", confirmLabel:"Continue anyway"}))) return;
@@ -2735,7 +2802,7 @@ function renderDashboard(){
   var mStart = monthStartStr();
   var monthSales = state.sales.filter(function(s){ return s.date >= mStart; });
   var monthRevenue = monthSales.reduce(function(s,x){ return s+(x.totalPrice||0); }, 0);
-  var monthProfit = monthSales.reduce(function(s,x){ return s+((x.totalPrice||0)-(x.qty*(x.costPriceAtSale||0))); }, 0);
+  var monthProfit = monthSales.reduce(function(s,x){ return s+saleProfit(x); }, 0);
 
   $("#dashCards").innerHTML = [
     card("Items in inventory", fmtNum(totalItems)),
@@ -2932,6 +2999,34 @@ $("#invSearch").addEventListener("input", renderInventory);
 $("#invSort").addEventListener("change", renderInventory);
 $("#invCategoryFilter").addEventListener("change", renderInventory);
 
+/* ---------------- sortable table headers ---------------- */
+var purSort = {key:"date", dir:"desc"};
+var saleSort = {key:"date", dir:"desc"};
+function sortTh(label, key, st, num){
+  var on = st.key===key;
+  var arrow = on ? (st.dir==="asc" ? "\u25B2" : "\u25BC") : "\u21C5";
+  return '<th class="sortable'+(num?' num':'')+(on?' sorted':'')+'" data-sortkey="'+key+'">'+label+' <span class="sort-arrow">'+arrow+'</span></th>';
+}
+function applySort(rows, st, getters){
+  var g = getters[st.key]; if(!g) return rows;
+  var mul = st.dir==="asc" ? 1 : -1;
+  return rows.slice().sort(function(a,b){
+    var x=g(a), y=g(b);
+    if(typeof x==="string" || typeof y==="string") return mul*String(x==null?"":x).localeCompare(String(y==null?"":y));
+    return mul*((x||0)-(y||0));
+  });
+}
+function wireSortHeaders(container, st, rerender, defaultDir){
+  $all("th.sortable", container).forEach(function(th){
+    th.addEventListener("click", function(){
+      var k = th.dataset.sortkey;
+      if(st.key===k){ st.dir = st.dir==="asc" ? "desc" : "asc"; }
+      else { st.key = k; st.dir = (defaultDir&&defaultDir[k]) || "asc"; }
+      rerender();
+    });
+  });
+}
+
 /* ---------------- render: purchases ---------------- */
 function renderPurchases(){
   var wf = ($("#purWholesalerFilter").value||"").toLowerCase().trim();
@@ -2950,14 +3045,20 @@ function renderPurchases(){
   // "Edit purchase" (which keeps the whole batch's saved lines in sync) —
   // only a legacy single-item purchase (from before batches existed) gets a
   // direct delete here, since there's no batch snapshot for it to go stale.
+  rows = applySort(rows, purSort, {
+    date:function(p){return p.date||"";}, item:function(p){return (p.itemName||"").toLowerCase();},
+    wholesaler:function(p){return (p.wholesaler||"").toLowerCase();},
+    qty:function(p){return p.qty;}, unit:function(p){return p.unitCost;}, total:function(p){return p.totalCost;}
+  });
   var body = rows.map(function(p){
     return '<tr><td>'+escapeHtml(p.date)+'</td><td>'+escapeHtml(p.itemName)+'</td><td>'+escapeHtml(p.wholesaler||"")+'</td>'+
       '<td class="num">'+fmtNum(p.qty)+'</td><td class="num">'+fmtMoney(p.unitCost)+'</td>'+
       '<td class="num">'+fmtMoney(p.totalCost)+'</td>'+
       '<td>'+(p.batchId ? '' : '<div class="row-actions"><button class="btn small ghost" data-del="'+p.id+'">Delete</button></div>')+'</td></tr>';
   }).join("");
-  $("#purTable").innerHTML = '<table><thead><tr><th>Date</th><th>Item</th><th>Wholesaler</th>'+
-    '<th class="num">Qty</th><th class="num">Unit cost</th><th class="num">Total</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
+  $("#purTable").innerHTML = '<table><thead><tr>'+sortTh("Date","date",purSort)+sortTh("Item","item",purSort)+sortTh("Wholesaler","wholesaler",purSort)+
+    sortTh("Qty","qty",purSort,true)+sortTh("Unit cost","unit",purSort,true)+sortTh("Total","total",purSort,true)+'<th></th></tr></thead><tbody>'+body+'</tbody></table>';
+  wireSortHeaders($("#purTable"), purSort, renderPurchases, {qty:"desc",unit:"desc",total:"desc"});
   $all("[data-del]", $("#purTable")).forEach(function(btn){
     btn.addEventListener("click", async function(){
       var p = state.purchases.find(function(x){return x.id===btn.dataset.del;});
@@ -2987,6 +3088,12 @@ function renderSales(){
     $("#saleTable").innerHTML = '<div class="empty">No sales recorded yet.</div>';
     return;
   }
+  rows = applySort(rows, saleSort, {
+    date:function(s){return s.date||"";}, item:function(s){return (s.itemName||"").toLowerCase();},
+    channel:function(s){return (s.channel||"").toLowerCase();}, payment:function(s){return (s.paymentMethod||"").toLowerCase();},
+    qty:function(s){return s.qty;}, unit:function(s){return s.unitPrice;}, discount:function(s){return s.discount||0;},
+    total:function(s){return s.totalPrice;}, profit:function(s){return saleProfit(s);}
+  });
   var body = rows.map(function(s){
     var profit = saleProfit(s);
     var chClass = s.channel==="Online"?"online":(s.channel==="Exhibition"?"exhibition":"in-house");
@@ -3000,8 +3107,9 @@ function renderSales(){
       '<td class="num '+(profit>=0?'profit-pos':'profit-neg')+'">'+fmtMoney(profit)+'</td>'+
       '<td><div class="row-actions"><button class="btn small secondary" data-edit="'+s.id+'">Edit</button><button class="btn small ghost" data-del="'+s.id+'">Delete</button></div></td></tr>';
   }).join("");
-  $("#saleTable").innerHTML = '<table><thead><tr><th>Date</th><th>Item</th><th>Channel</th><th>Payment</th>'+
-    '<th class="num">Qty</th><th class="num">Unit price</th><th class="num">Discount</th><th class="num">Total</th><th class="num">Profit</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
+  $("#saleTable").innerHTML = '<table><thead><tr>'+sortTh("Date","date",saleSort)+sortTh("Item","item",saleSort)+sortTh("Channel","channel",saleSort)+sortTh("Payment","payment",saleSort)+
+    sortTh("Qty","qty",saleSort,true)+sortTh("Unit price","unit",saleSort,true)+sortTh("Discount","discount",saleSort,true)+sortTh("Total","total",saleSort,true)+sortTh("Profit","profit",saleSort,true)+'<th></th></tr></thead><tbody>'+body+'</tbody></table>';
+  wireSortHeaders($("#saleTable"), saleSort, renderSales, {qty:"desc",unit:"desc",discount:"desc",total:"desc",profit:"desc"});
   $all("[data-edit]", $("#saleTable")).forEach(function(btn){
     btn.addEventListener("click", function(){
       var s = state.sales.find(function(x){return x.id===btn.dataset.edit;});
@@ -3165,134 +3273,374 @@ function renderLowStockReport(el){
   });
 }
 
-function aggregateSalesBy(rows, keyFn){
-  var buckets = {};
-  rows.forEach(function(s){
-    var key = keyFn(s) || "(none)";
-    var profit = saleProfit(s);
-    if(!buckets[key]) buckets[key] = {qty:0, revenue:0, profit:0};
-    buckets[key].qty += s.qty||0;
-    buckets[key].revenue += s.totalPrice||0;
-    buckets[key].profit += profit;
-  });
-  return Object.keys(buckets).sort(function(a,b){ return buckets[b].revenue-buckets[a].revenue; })
-    .map(function(k){ return [k, fmtNum(buckets[k].qty), fmtMoney(buckets[k].revenue), fmtMoney(buckets[k].profit)]; });
+/* ---------------- report chart helpers ---------------- */
+var MON_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtShort(n){
+  var a=Math.abs(n), sg=n<0?"-":"";
+  if(a>=10000000) return sg+"₹"+(a/10000000).toFixed(1).replace(/\.0$/,"")+"Cr";
+  if(a>=100000) return sg+"₹"+(a/100000).toFixed(1).replace(/\.0$/,"")+"L";
+  if(a>=1000) return sg+"₹"+(a/1000).toFixed(1).replace(/\.0$/,"")+"k";
+  return sg+"₹"+Math.round(a);
 }
+function pad2(n){ return String(n).padStart(2,"0"); }
+function ymd(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+function parseYmd(s){ var p=s.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+function pct(a,b){ return b>0 ? (a/b*100) : 0; }
+function bucketOf(s,g){
+  if(g==="day") return s;
+  if(g==="month") return s.slice(0,7);
+  var d=parseYmd(s); d.setDate(d.getDate()-((d.getDay()+6)%7)); return ymd(d);
+}
+function nextBucket(k,g){
+  if(g==="month"){ var p=k.split("-"); var d=new Date(+p[0], +p[1], 1); return d.getFullYear()+"-"+pad2(d.getMonth()+1); }
+  var d2=parseYmd(k); d2.setDate(d2.getDate()+(g==="week"?7:1)); return ymd(d2);
+}
+function bucketLabel(k,g){
+  if(g==="month"){ var p=k.split("-"); return MON_NAMES[+p[1]-1]+" "+p[0].slice(2); }
+  var d=parseYmd(k); return d.getDate()+" "+MON_NAMES[d.getMonth()];
+}
+function timeBuckets(dates){
+  dates = dates.filter(Boolean).sort();
+  if(!dates.length) return {gran:"day", keys:[]};
+  var days = Math.round((parseYmd(dates[dates.length-1])-parseYmd(dates[0]))/86400000)+1;
+  var g = days<=31 ? "day" : (days<=140 ? "week" : "month");
+  var keys=[], k=bucketOf(dates[0],g), end=bucketOf(dates[dates.length-1],g), guard=0;
+  while(k<=end && guard++<500){ keys.push(k); k=nextBucket(k,g); }
+  return {gran:g, keys:keys};
+}
+function sumByBucket(rows, tb, valFn){
+  var out={};
+  rows.forEach(function(r){ var k=bucketOf(r.date,tb.gran); out[k]=(out[k]||0)+valFn(r); });
+  return out;
+}
+function chartLegend(series){
+  return '<div class="rep-legend">'+series.map(function(s){
+    return '<span><i style="background:'+s.color+'"></i>'+escapeHtml(s.label)+'</span>';
+  }).join("")+'</div>';
+}
+function groupedBarsSvg(tb, series){
+  var keys=tb.keys, n=keys.length; if(!n) return "";
+  var all=[]; series.forEach(function(s){ keys.forEach(function(k){ all.push(s.vals[k]||0); }); });
+  var maxV=Math.max.apply(null, all.concat([0])), minV=Math.min.apply(null, all.concat([0]));
+  if(maxV===minV) maxV=minV+1;
+  var W=640,H=240,L=62,R=8,T=10,B=26, iw=W-L-R, ih=H-T-B;
+  function y(v){ return T+(maxV-v)/(maxV-minV)*ih; }
+  var o='<svg viewBox="0 0 '+W+' '+H+'" class="rep-svg" role="img">';
+  for(var i=0;i<=4;i++){
+    var gv=minV+(maxV-minV)*i/4;
+    o+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(gv).toFixed(1)+'" y2="'+y(gv).toFixed(1)+'" class="grid"/>'+
+       '<text x="'+(L-6)+'" y="'+(y(gv)+3).toFixed(1)+'" class="ax" text-anchor="end">'+fmtShort(gv)+'</text>';
+  }
+  var slot=iw/n, bw=Math.min(26, slot*0.8/series.length);
+  keys.forEach(function(k,idx){
+    var cx=L+slot*(idx+0.5);
+    series.forEach(function(s,j){
+      var v=s.vals[k]||0, x=cx-bw*series.length/2+bw*j, y0=y(0), y1=y(v);
+      o+='<rect x="'+x.toFixed(1)+'" y="'+Math.min(y0,y1).toFixed(1)+'" width="'+Math.max(1,bw-1).toFixed(1)+'" height="'+Math.max(1,Math.abs(y0-y1)).toFixed(1)+'" rx="2" style="fill:'+s.color+'"><title>'+bucketLabel(k,tb.gran)+' · '+escapeHtml(s.label)+': '+fmtMoney(v)+'</title></rect>';
+    });
+  });
+  var step=Math.ceil(n/7);
+  keys.forEach(function(k,idx){
+    if(idx%step===0) o+='<text x="'+(L+slot*(idx+0.5)).toFixed(1)+'" y="'+(H-8)+'" class="ax" text-anchor="middle">'+bucketLabel(k,tb.gran)+'</text>';
+  });
+  o+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0).toFixed(1)+'" y2="'+y(0).toFixed(1)+'" class="zero"/></svg>';
+  return o;
+}
+function lineSvg(tb, vals, suffix, color){
+  var keys=tb.keys, n=keys.length; if(n<2) return "";
+  var arr=keys.map(function(k){ return vals[k]; });
+  var present=arr.filter(function(v){ return v!=null; });
+  if(present.length<2) return "";
+  var maxV=Math.max.apply(null,present.concat([0])), minV=Math.min.apply(null,present.concat([0]));
+  if(maxV===minV) maxV=minV+1;
+  var W=640,H=200,L=56,R=12,T=10,B=26, iw=W-L-R, ih=H-T-B;
+  function y(v){ return T+(maxV-v)/(maxV-minV)*ih; }
+  function x(i){ return L+iw*i/(n-1); }
+  var o='<svg viewBox="0 0 '+W+' '+H+'" class="rep-svg" role="img">';
+  for(var i=0;i<=3;i++){
+    var gv=minV+(maxV-minV)*i/3;
+    o+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(gv).toFixed(1)+'" y2="'+y(gv).toFixed(1)+'" class="grid"/>'+
+       '<text x="'+(L-6)+'" y="'+(y(gv)+3).toFixed(1)+'" class="ax" text-anchor="end">'+Math.round(gv)+suffix+'</text>';
+  }
+  var path="", started=false;
+  arr.forEach(function(v,idx){
+    if(v==null){ started=false; return; }
+    path+=(started?"L":"M")+x(idx).toFixed(1)+","+y(v).toFixed(1)+" "; started=true;
+  });
+  o+='<path d="'+path+'" fill="none" style="stroke:'+color+';stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>';
+  arr.forEach(function(v,idx){
+    if(v==null) return;
+    o+='<circle cx="'+x(idx).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="3.5" style="fill:'+color+'"><title>'+bucketLabel(keys[idx],tb.gran)+': '+v.toFixed(1)+suffix+'</title></circle>';
+  });
+  var step=Math.ceil(n/7);
+  keys.forEach(function(k,idx){
+    if(idx%step===0) o+='<text x="'+x(idx).toFixed(1)+'" y="'+(H-8)+'" class="ax" text-anchor="middle">'+bucketLabel(k,tb.gran)+'</text>';
+  });
+  o+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0).toFixed(1)+'" y2="'+y(0).toFixed(1)+'" class="zero"/></svg>';
+  return o;
+}
+function hbarsHtml(rows){
+  if(!rows.length) return '<div class="empty">Nothing to show for this range.</div>';
+  var max=Math.max.apply(null, rows.map(function(r){ return Math.abs(r.value); }).concat([1]));
+  return '<div class="hbars">'+rows.map(function(r){
+    return '<div class="hb-row"><div class="hb-top"><span class="hb-label">'+escapeHtml(r.label)+'</span><span class="hb-val">'+escapeHtml(r.text)+'</span></div>'+
+      '<div class="hb-track"><div class="hb-fill'+(r.value<0?' neg':'')+(r.cls?' '+r.cls:'')+'" style="width:'+(Math.abs(r.value)/max*100).toFixed(1)+'%"></div></div>'+
+      (r.note?'<div class="hb-note">'+escapeHtml(r.note)+'</div>':'')+'</div>';
+  }).join("")+'</div>';
+}
+function repPanel(question, takeaway, bodyHtml){
+  return '<div class="section-block rep-panel"><h3>'+escapeHtml(question)+'</h3>'+
+    (takeaway?'<p class="rep-take">'+takeaway+'</p>':'')+bodyHtml+'</div>';
+}
+function kpiCard(label, value, sub, tone){
+  return '<div class="card kpi'+(tone?' '+tone:'')+'"><div class="label">'+escapeHtml(label)+'</div><div class="value">'+value+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>';
+}
+function groupSales(rows, keyFn){
+  var b={};
+  rows.forEach(function(s){
+    var k=keyFn(s); if(!k) return;
+    if(!b[k]) b[k]={key:k, qty:0, revenue:0, profit:0, discount:0};
+    b[k].qty+=s.qty||0; b[k].revenue+=s.totalPrice||0; b[k].profit+=saleProfit(s); b[k].discount+=s.discount||0;
+  });
+  return Object.keys(b).map(function(k){ return b[k]; });
+}
+function noDataPanel(msg){ return '<div class="section-block"><div class="empty">'+msg+'</div></div>'; }
+function rangeLabelText(){
+  var r=getRange();
+  if(!r.from && !r.to) return "all time";
+  return (r.from||"start")+" to "+(r.to||"today");
+}
+
+/* ---------------- Sales report ---------------- */
 function renderSalesReport(el){
   var r = getRange();
-  var rows = state.sales.filter(function(s){return inRange(s.date, r);});
-  var totalRevenue=0, totalProfit=0, totalQty=0, totalDiscount=0;
-  rows.forEach(function(s){
-    var profit = saleProfit(s);
-    totalRevenue += s.totalPrice||0; totalProfit += profit; totalQty += s.qty||0;
-    totalDiscount += s.discount||0;
-  });
-  var byChannel = aggregateSalesBy(rows, function(s){return s.channel;});
-  var byCategory = aggregateSalesBy(rows, function(s){return s.category;});
-  var bySubcategory = aggregateSalesBy(rows, function(s){return s.subcategory ? (s.category+" — "+s.subcategory) : null;});
-  var byWholesaler = aggregateSalesBy(rows, function(s){return s.wholesaler;});
-  var byPayment = aggregateSalesBy(rows, function(s){return s.paymentMethod;});
+  var rows = state.sales.filter(function(s){ return inRange(s.date, r); });
+  if(!rows.length){
+    el.innerHTML = noDataPanel("No sales in this range ("+rangeLabelText()+").");
+    return;
+  }
+  var revenue=0, profit=0, qty=0, discount=0;
+  rows.forEach(function(s){ revenue+=s.totalPrice||0; profit+=saleProfit(s); qty+=s.qty||0; discount+=s.discount||0; });
+  var listValue = revenue+discount;
+  var margin = pct(profit, revenue);
+  var panels = "";
+
+  // 1. trend
+  var tb = timeBuckets(rows.map(function(s){ return s.date; }));
+  var revB = sumByBucket(rows, tb, function(s){ return s.totalPrice||0; });
+  var proB = sumByBucket(rows, tb, function(s){ return saleProfit(s); });
+  var best=null; tb.keys.forEach(function(k){ if(best===null || (revB[k]||0)>(revB[best]||0)) best=k; });
+  var series=[{label:"Revenue", color:"var(--maroon)", vals:revB},{label:"Profit", color:"var(--gold)", vals:proB}];
+  var lossPeriods = tb.keys.filter(function(k){ return (proB[k]||0)<0; }).length;
+  panels += repPanel("Is revenue turning into profit?",
+    'Best '+(tb.gran==="month"?"month":tb.gran==="week"?"week":"day")+': <b>'+bucketLabel(best,tb.gran)+'</b> with '+fmtMoney(revB[best])+' revenue. You keep <b>'+margin.toFixed(1)+'%</b> of every rupee sold'+(lossPeriods?' — but '+lossPeriods+' period'+(lossPeriods>1?'s':'')+' made a loss.':'.'),
+    chartLegend(series)+groupedBarsSvg(tb, series));
+
+  // 2. channel
+  var ch = groupSales(rows, function(s){ return s.channel||"Other"; }).sort(function(a,b){ return b.profit-a.profit; });
+  var chTopMargin = ch.slice().sort(function(a,b){ return pct(b.profit,b.revenue)-pct(a.profit,a.revenue); })[0];
+  var chTake = ch.length>1
+    ? '<b>'+escapeHtml(ch[0].key)+'</b> brings the most profit ('+fmtMoney(ch[0].profit)+', '+pct(ch[0].profit,profit).toFixed(0)+'% of the total)'+(chTopMargin.key!==ch[0].key?'; <b>'+escapeHtml(chTopMargin.key)+'</b> has the best margin at '+pct(chTopMargin.profit,chTopMargin.revenue).toFixed(0)+'%.':'.')
+    : 'All sales in this range came through <b>'+escapeHtml(ch[0].key)+'</b>.';
+  panels += repPanel("Which channel earns the most?", chTake, hbarsHtml(ch.map(function(c){
+    return {label:c.key, value:c.profit, text:fmtMoney(c.profit)+" profit",
+      note:fmtNum(c.qty)+" sold · "+fmtMoney(c.revenue)+" revenue · "+pct(c.profit,c.revenue).toFixed(0)+"% margin"};
+  })));
+
+  // 3. category / subcategory
+  var hasSub = rows.some(function(s){ return s.subcategory; });
+  var cat = groupSales(rows, function(s){ return hasSub && s.subcategory ? (s.category||"?")+" — "+s.subcategory : (s.category||"(No category)"); })
+    .sort(function(a,b){ return b.profit-a.profit; }).slice(0,8);
+  var top3 = cat.slice(0,3).reduce(function(s,c){ return s+c.profit; },0);
+  var weak = cat.filter(function(c){ return c.revenue>0 && pct(c.profit,c.revenue)<10; });
+  panels += repPanel("What should I stock more of?",
+    'Your top '+Math.min(3,cat.length)+' earn <b>'+pct(top3,profit).toFixed(0)+'%</b> of all profit.'+(weak.length?' Low margin (under 10%): <b>'+weak.map(function(c){return escapeHtml(c.key);}).join(", ")+'</b> — check pricing.':' Every listed line is earning a healthy margin.'),
+    hbarsHtml(cat.map(function(c){
+      return {label:c.key, value:c.profit, text:fmtMoney(c.profit), note:fmtNum(c.qty)+" sold · "+pct(c.profit,c.revenue).toFixed(0)+"% margin"};
+    })));
+
+  // 4. wholesaler
+  var wh = groupSales(rows, function(s){ return s.wholesaler; }).sort(function(a,b){ return b.profit-a.profit; }).slice(0,8);
+  if(wh.length>1){
+    var whBest = wh.slice().sort(function(a,b){ return pct(b.profit,b.revenue)-pct(a.profit,a.revenue); })[0];
+    panels += repPanel("Whose stock earns best?",
+      '<b>'+escapeHtml(whBest.key)+'</b> gives the best margin ('+pct(whBest.profit,whBest.revenue).toFixed(0)+'%). Use this when negotiating or deciding where to reorder.',
+      hbarsHtml(wh.map(function(w){ return {label:w.key, value:w.profit, text:fmtMoney(w.profit), note:fmtNum(w.qty)+" sold · "+pct(w.profit,w.revenue).toFixed(0)+"% margin"}; })));
+  }
+
+  // 5. discounts
+  if(discount>0){
+    var dch = groupSales(rows, function(s){ return s.channel||"Other"; }).filter(function(c){ return c.discount>0; })
+      .sort(function(a,b){ return pct(b.discount,b.revenue+b.discount)-pct(a.discount,a.revenue+a.discount); });
+    panels += repPanel("Are discounts eating into margin?",
+      'You gave away <b>'+fmtMoney(discount)+'</b> ('+pct(discount,listValue).toFixed(1)+'% of list value). Heaviest discounting: <b>'+escapeHtml(dch[0].key)+'</b> at '+pct(dch[0].discount,dch[0].revenue+dch[0].discount).toFixed(1)+'%.',
+      hbarsHtml(dch.map(function(c){ var p=pct(c.discount,c.revenue+c.discount); return {label:c.key, value:p, text:p.toFixed(1)+"% off", note:fmtMoney(c.discount)+" given away", cls:"warn"}; })));
+  }
+
+  // 6. payment mix
+  var pay = groupSales(rows, function(s){ return s.paymentMethod; }).sort(function(a,b){ return b.revenue-a.revenue; });
+  if(pay.length){
+    panels += repPanel("How are customers paying?",
+      '<b>'+escapeHtml(pay[0].key)+'</b> is the most used method ('+pct(pay[0].revenue,revenue).toFixed(0)+'% of revenue).',
+      hbarsHtml(pay.map(function(p){ return {label:p.key, value:p.revenue, text:pct(p.revenue,revenue).toFixed(0)+"%", note:fmtMoney(p.revenue)}; })));
+  }
+
   el.innerHTML =
     '<div class="sub-cards">'+
-      '<div class="card"><div class="label">Units sold</div><div class="value">'+fmtNum(totalQty)+'</div></div>'+
-      '<div class="card"><div class="label">Revenue</div><div class="value">'+fmtMoney(totalRevenue)+'</div></div>'+
-      '<div class="card"><div class="label">Profit</div><div class="value">'+fmtMoney(totalProfit)+'</div></div>'+
-      '<div class="card"><div class="label">Total discount given</div><div class="value">'+fmtMoney(totalDiscount)+'</div></div>'+
+      kpiCard("Revenue", fmtMoney(revenue), fmtNum(qty)+" units sold")+
+      kpiCard("Profit", fmtMoney(profit), "after cost &amp; delivery", profit<0?"bad":"good")+
+      kpiCard("Margin", margin.toFixed(1)+"%", "profit ÷ revenue")+
+      kpiCard("Avg sale value", fmtMoney(revenue/rows.length), fmtNum(rows.length)+" sales")+
+      kpiCard("Discounts given", fmtMoney(discount), pct(discount,listValue).toFixed(1)+"% of list value")+
     '</div>'+
-    '<div class="section-block"><h3>By channel</h3>'+simpleTable(["Channel","Units","Revenue","Profit"], byChannel)+'</div>'+
-    '<div class="section-block"><h3>By category</h3>'+simpleTable(["Category","Units","Revenue","Profit"], byCategory)+'</div>'+
-    (bySubcategory.length ? '<div class="section-block"><h3>By subcategory</h3>'+simpleTable(["Category — Subcategory","Units","Revenue","Profit"], bySubcategory)+'</div>' : '')+
-    '<div class="section-block"><h3>By wholesaler</h3>'+simpleTable(["Wholesaler","Units","Revenue","Profit"], byWholesaler)+'</div>'+
-    '<div class="section-block"><h3>By payment method</h3>'+simpleTable(["Payment method","Units","Revenue","Profit"], byPayment)+'</div>'+
-    '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
-    '<div class="table-wrap">'+(rows.length ? simpleTable(
-      ["Date","Item","Category","Wholesaler","Channel","Payment","Qty","List price","Sold at","Discount","Total","Profit"],
-      rows.map(function(s){
-        var profit = saleProfit(s);
-        return [escapeHtml(s.date), escapeHtml(s.itemName), escapeHtml(s.category||""), escapeHtml(s.wholesaler||""),
-          escapeHtml(s.channel), escapeHtml(s.paymentMethod||""), fmtNum(s.qty), fmtMoney(s.listPriceAtSale||s.unitPrice),
-          fmtMoney(s.unitPrice), fmtMoney(s.discount||0), fmtMoney(s.totalPrice), fmtMoney(profit)];
-      })
-    ) : '<div class="empty">No sales in this range.</div>')+'</div>';
+    '<div class="rep-note">Individual sales are listed in the Sales tab — this view shows what they add up to.</div>'+
+    panels+
+    '<div style="margin:4px 0 14px;"><button class="btn secondary small" id="expBtn">Export all sales to CSV</button></div>';
   $("#expBtn").addEventListener("click", function(){
     exportCSV("sales-report-"+todayStr()+".csv",
       ["Date","Item","Category","Subcategory","Wholesaler","Channel","Exhibition","Payment Method","Qty","List Price","Sold At","Discount","Total","Cost At Sale","Profit","Customer","Delivery Charge","Delivery City","Delivery Pincode"],
       rows.map(function(s){
-        var profit=saleProfit(s);
-        return [s.date,s.itemName,s.category||"",s.subcategory||"",s.wholesaler||"",s.channel,s.exhibitionName||"",s.paymentMethod||"",s.qty,s.listPriceAtSale||s.unitPrice,s.unitPrice,s.discount||0,s.totalPrice,s.costPriceAtSale||0,profit,s.customer||"",s.deliveryCharge||0,s.deliveryCity||"",s.deliveryPincode||""];
+        return [s.date,s.itemName,s.category||"",s.subcategory||"",s.wholesaler||"",s.channel,s.exhibitionName||"",s.paymentMethod||"",s.qty,s.listPriceAtSale||s.unitPrice,s.unitPrice,s.discount||0,s.totalPrice,s.costPriceAtSale||0,saleProfit(s),s.customer||"",s.deliveryCharge||0,s.deliveryCity||"",s.deliveryPincode||""];
       })
     );
   });
 }
 
+/* ---------------- Purchases report ---------------- */
 function renderPurchaseReport(el){
   var r = getRange();
-  var rows = state.purchases.filter(function(p){return inRange(p.date, r);});
-  var byW = {}, byCat = {}, bySub = {};
-  var totalCost=0, totalQty=0;
+  var rows = state.purchases.filter(function(p){ return inRange(p.date, r); });
+  var sales = state.sales.filter(function(s){ return inRange(s.date, r); });
+  if(!rows.length){
+    el.innerHTML = noDataPanel("No purchases in this range ("+rangeLabelText()+").");
+    return;
+  }
+  var spent=0, units=0;
+  rows.forEach(function(p){ spent+=p.totalCost||0; units+=p.qty||0; });
+  var wset={}; rows.forEach(function(p){ wset[p.wholesaler||"Unspecified"]=1; });
+  var panels="";
+
+  // 1. trend
+  var tb = timeBuckets(rows.map(function(p){ return p.date; }));
+  var spB = sumByBucket(rows, tb, function(p){ return p.totalCost||0; });
+  var peak=null; tb.keys.forEach(function(k){ if(peak===null || (spB[k]||0)>(spB[peak]||0)) peak=k; });
+  var series=[{label:"Spent on stock", color:"var(--maroon)", vals:spB}];
+  panels += repPanel("How much am I putting into stock?",
+    'Biggest buying '+(tb.gran==="month"?"month":tb.gran==="week"?"week":"day")+': <b>'+bucketLabel(peak,tb.gran)+'</b> ('+fmtMoney(spB[peak])+'). Average cost per piece: <b>'+fmtMoney(spent/Math.max(units,1))+'</b>.',
+    groupedBarsSvg(tb, series));
+
+  // 2. by wholesaler spend
+  var byW={};
+  rows.forEach(function(p){ var w=p.wholesaler||"Unspecified"; if(!byW[w]) byW[w]={key:w,qty:0,cost:0}; byW[w].qty+=p.qty||0; byW[w].cost+=p.totalCost||0; });
+  var wl = Object.keys(byW).map(function(k){return byW[k];}).sort(function(a,b){ return b.cost-a.cost; });
+  panels += repPanel("Where does the money go?",
+    '<b>'+escapeHtml(wl[0].key)+'</b> takes '+pct(wl[0].cost,spent).toFixed(0)+'% of your purchase spend'+(wl.length>1?' — '+wl.length+' wholesalers in total.':'.'),
+    hbarsHtml(wl.slice(0,8).map(function(w){ return {label:w.key, value:w.cost, text:fmtMoney(w.cost), note:fmtNum(w.qty)+" pieces · "+pct(w.cost,spent).toFixed(0)+"% of spend · avg "+fmtMoney(w.cost/Math.max(w.qty,1))}; })));
+
+  // 3. wholesaler return
+  var sw = {}; groupSales(sales, function(s){ return s.wholesaler; }).forEach(function(g){ sw[g.key]=g; });
+  var ret = wl.filter(function(w){ return w.cost>0; }).map(function(w){
+    var g=sw[w.key]; var prof=g?g.profit:0;
+    return {key:w.key, spend:w.cost, profit:prof, roi:pct(prof,w.cost)};
+  }).sort(function(a,b){ return b.roi-a.roi; });
+  if(ret.length){
+    panels += repPanel("Which wholesaler pays back best?",
+      '<b>'+escapeHtml(ret[0].key)+'</b> returned '+ret[0].roi.toFixed(0)+'% of what you spent on it in profit so far.'+(ret.length>1 && ret[ret.length-1].roi<ret[0].roi?' <b>'+escapeHtml(ret[ret.length-1].key)+'</b> is lowest at '+ret[ret.length-1].roi.toFixed(0)+'%.':'')+' (Stock still unsold hasn\'t returned anything yet.)',
+      hbarsHtml(ret.slice(0,8).map(function(x){ return {label:x.key, value:x.roi, text:x.roi.toFixed(0)+"% back", note:fmtMoney(x.profit)+" profit from "+fmtMoney(x.spend)+" spent"}; })));
+  }
+
+  // 4. sell-through by category
+  var cb={};
   rows.forEach(function(p){
-    totalCost += p.totalCost||0; totalQty += p.qty||0;
-    var w = p.wholesaler || "Unspecified";
-    if(!byW[w]) byW[w]={qty:0,cost:0};
-    byW[w].qty += p.qty||0; byW[w].cost += p.totalCost||0;
-    var it = findItem(p.itemId);
-    var cat = (it && it.category) || "(No category)";
-    var sub = (it && it.subcategory) ? (cat+" — "+it.subcategory) : null;
-    if(!byCat[cat]) byCat[cat]={qty:0,cost:0};
-    byCat[cat].qty += p.qty||0; byCat[cat].cost += p.totalCost||0;
-    if(sub){
-      if(!bySub[sub]) bySub[sub]={qty:0,cost:0};
-      bySub[sub].qty += p.qty||0; bySub[sub].cost += p.totalCost||0;
-    }
+    var it=findItem(p.itemId); var c=(it&&it.category)||(p.category)||"(No category)";
+    if(!cb[c]) cb[c]={key:c,bought:0,sold:0,stock:0}; cb[c].bought+=p.qty||0;
   });
+  sales.forEach(function(s){ var c=s.category||"(No category)"; if(cb[c]) cb[c].sold+=s.qty||0; });
+  state.inventory.forEach(function(i){ var c=i.category||"(No category)"; if(cb[c]) cb[c].stock+=i.stock||0; });
+  var st = Object.keys(cb).map(function(k){ var c=cb[k]; c.rate=pct(c.sold,c.bought); return c; }).sort(function(a,b){ return a.rate-b.rate; });
+  panels += repPanel("What's selling through — and what's sitting?",
+    'Slowest: <b>'+escapeHtml(st[0].key)+'</b> ('+st[0].rate.toFixed(0)+'% of the '+fmtNum(st[0].bought)+' bought in this range has sold, '+fmtNum(st[0].stock)+' in stock now). Think twice before reordering slow lines.',
+    hbarsHtml(st.slice(0,8).map(function(c){ return {label:c.key, value:c.rate, text:c.rate.toFixed(0)+"% sold", note:"bought "+fmtNum(c.bought)+" · sold "+fmtNum(c.sold)+" · in stock now "+fmtNum(c.stock), cls:c.rate<30?"warn":""}; })));
+
   el.innerHTML =
     '<div class="sub-cards">'+
-      '<div class="card"><div class="label">Units purchased</div><div class="value">'+fmtNum(totalQty)+'</div></div>'+
-      '<div class="card"><div class="label">Total spent</div><div class="value">'+fmtMoney(totalCost)+'</div></div>'+
+      kpiCard("Total spent", fmtMoney(spent), fmtNum(rows.length)+" purchase entries")+
+      kpiCard("Pieces bought", fmtNum(units), "")+
+      kpiCard("Avg cost / piece", fmtMoney(spent/Math.max(units,1)), "")+
+      kpiCard("Wholesalers", fmtNum(Object.keys(wset).length), "used in this range")+
     '</div>'+
-    '<div class="section-block"><h3>By category</h3>'+simpleTable(
-      ["Category","Units","Total cost"],
-      Object.keys(byCat).sort().map(function(c){return [escapeHtml(c), fmtNum(byCat[c].qty), fmtMoney(byCat[c].cost)];})
-    )+'</div>'+
-    (Object.keys(bySub).length ? '<div class="section-block"><h3>By subcategory</h3>'+simpleTable(
-      ["Category — Subcategory","Units","Total cost"],
-      Object.keys(bySub).sort().map(function(s){return [escapeHtml(s), fmtNum(bySub[s].qty), fmtMoney(bySub[s].cost)];})
-    )+'</div>' : '')+
-    '<div class="section-block"><h3>By wholesaler</h3>'+simpleTable(
-      ["Wholesaler","Units","Total cost"],
-      Object.keys(byW).map(function(w){return [escapeHtml(w), fmtNum(byW[w].qty), fmtMoney(byW[w].cost)];})
-    )+'</div>'+
-    '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
-    '<div class="table-wrap">'+(rows.length ? simpleTable(
-      ["Date","Item","Wholesaler","Qty","Unit cost","Total"],
-      rows.map(function(p){return [escapeHtml(p.date), escapeHtml(p.itemName), escapeHtml(p.wholesaler||""), fmtNum(p.qty), fmtMoney(p.unitCost), fmtMoney(p.totalCost)];})
-    ) : '<div class="empty">No purchases in this range.</div>')+'</div>';
+    '<div class="rep-note">Individual purchases are listed in the Purchases tab — this view shows where the money went and whether it is coming back.</div>'+
+    panels+
+    '<div style="margin:4px 0 14px;"><button class="btn secondary small" id="expBtn">Export all purchases to CSV</button></div>';
   $("#expBtn").addEventListener("click", function(){
     exportCSV("purchase-report-"+todayStr()+".csv",
       ["Date","Item","Wholesaler","Qty","Unit Cost","Total"],
-      rows.map(function(p){return [p.date,p.itemName,p.wholesaler||"",p.qty,p.unitCost,p.totalCost];})
+      rows.map(function(p){ return [p.date,p.itemName,p.wholesaler||"",p.qty,p.unitCost,p.totalCost]; })
     );
   });
 }
 
+/* ---------------- Profit & Loss report ---------------- */
 function renderPnlReport(el){
   var r = getRange();
-  var sales = state.sales.filter(function(s){return inRange(s.date, r);});
-  var purchases = state.purchases.filter(function(p){return inRange(p.date, r);});
-  var revenue = sales.reduce(function(s,x){return s+(x.totalPrice||0);},0);
-  var cogs = sales.reduce(function(s,x){return s+(x.qty*(x.costPriceAtSale||0));},0);
-  var grossProfit = revenue - cogs;
-  var margin = revenue>0 ? (grossProfit/revenue*100) : 0;
-  var purchaseSpend = purchases.reduce(function(s,p){return s+(p.totalCost||0);},0);
+  var sales = state.sales.filter(function(s){ return inRange(s.date, r); });
+  var purchases = state.purchases.filter(function(p){ return inRange(p.date, r); });
+  if(!sales.length && !purchases.length){
+    el.innerHTML = noDataPanel("No sales or purchases in this range ("+rangeLabelText()+").");
+    return;
+  }
+  var revenue=0, cogs=0, delivery=0;
+  sales.forEach(function(s){ revenue+=s.totalPrice||0; cogs+=(s.qty||0)*(s.costPriceAtSale||0); delivery+=s.deliveryCharge||0; });
+  var net = revenue-cogs-delivery;
+  var margin = pct(net, revenue);
+  var spend = purchases.reduce(function(s,p){ return s+(p.totalCost||0); },0);
+  var panels="";
+
+  if(revenue>0){
+    panels += repPanel("Where does each ₹100 of sales go?",
+      'Of every ₹100 you sell, <b>₹'+pct(cogs,revenue).toFixed(0)+'</b> pays for the saree'+(delivery>0?', ₹'+pct(delivery,revenue).toFixed(0)+' for delivery':'')+' and <b>₹'+margin.toFixed(0)+'</b> is yours to keep.',
+      hbarsHtml([
+        {label:"Cost of the sarees sold", value:pct(cogs,revenue), text:"₹"+pct(cogs,revenue).toFixed(1)},
+        {label:"Delivery charges paid", value:pct(delivery,revenue), text:"₹"+pct(delivery,revenue).toFixed(1)},
+        {label:"Profit kept", value:margin, text:"₹"+margin.toFixed(1), cls:margin>=0?"good":""}
+      ]));
+
+    var tb = timeBuckets(sales.map(function(s){ return s.date; }));
+    var revB = sumByBucket(sales, tb, function(s){ return s.totalPrice||0; });
+    var netB = sumByBucket(sales, tb, function(s){ return saleProfit(s); });
+    var mB={}; tb.keys.forEach(function(k){ if(revB[k]>0) mB[k]=pct(netB[k]||0, revB[k]); });
+    var line = lineSvg(tb, mB, "%", "var(--maroon)");
+    if(line){
+      var ks=tb.keys.filter(function(k){ return mB[k]!=null; });
+      var first=mB[ks[0]], last=mB[ks[ks.length-1]];
+      panels += repPanel("Is my margin improving or slipping?",
+        'Margin moved from <b>'+first.toFixed(0)+'%</b> ('+bucketLabel(ks[0],tb.gran)+') to <b>'+last.toFixed(0)+'%</b> ('+bucketLabel(ks[ks.length-1],tb.gran)+') — '+(last>first+1?'trending up.':last<first-1?'trending down; check discounts and delivery costs.':'holding steady.'),
+        line);
+    }
+  }
+
+  if(purchases.length){
+    var tb2 = timeBuckets(purchases.map(function(p){return p.date;}).concat(sales.map(function(s){return s.date;})));
+    var spB = sumByBucket(purchases, tb2, function(p){ return p.totalCost||0; });
+    var cgB = sumByBucket(sales, tb2, function(s){ return (s.qty||0)*(s.costPriceAtSale||0); });
+    var series=[{label:"Bought (cash out to wholesalers)", color:"var(--maroon)", vals:spB},{label:"Cost of sarees sold", color:"var(--gold)", vals:cgB}];
+    var gap = spend-cogs;
+    panels += repPanel("Is cash piling up in unsold stock?",
+      gap>0 ? 'You bought <b>'+fmtMoney(gap)+'</b> more than you sold at cost in this range — that money is sitting on the shelf as stock.'
+            : 'You sold <b>'+fmtMoney(-gap)+'</b> more (at cost) than you bought — stock is being drawn down, so reorder before shelves run thin.',
+      chartLegend(series)+groupedBarsSvg(tb2, series));
+  }
+
   el.innerHTML =
     '<div class="sub-cards">'+
-      '<div class="card"><div class="label">Revenue</div><div class="value">'+fmtMoney(revenue)+'</div></div>'+
-      '<div class="card"><div class="label">Cost of goods sold</div><div class="value">'+fmtMoney(cogs)+'</div></div>'+
-      '<div class="card"><div class="label">Gross profit</div><div class="value">'+fmtMoney(grossProfit)+'</div></div>'+
-      '<div class="card"><div class="label">Margin</div><div class="value">'+margin.toFixed(1)+'%</div></div>'+
-      '<div class="card"><div class="label">Spent on purchases</div><div class="value">'+fmtMoney(purchaseSpend)+'</div></div>'+
+      kpiCard("Revenue", fmtMoney(revenue), fmtNum(sales.length)+" sales")+
+      kpiCard("Cost of goods sold", fmtMoney(cogs), "")+
+      kpiCard("Delivery paid", fmtMoney(delivery), "")+
+      kpiCard("Net profit", fmtMoney(net), margin.toFixed(1)+"% margin", net<0?"bad":"good")+
+      kpiCard("Bought from wholesalers", fmtMoney(spend), "cash out in range")+
     '</div>'+
-    '<p class="muted" style="font-size:12.5px;">Gross profit compares sale revenue to the cost of the goods sold. "Spent on purchases" is cash paid to wholesalers in this range — it may differ from COGS if stock bought now sells later.</p>';
+    '<div class="rep-note">Net profit = revenue − cost of the sarees sold − delivery. Exhibition stall costs are already built into each saree\'s cost.</div>'+
+    panels;
 }
 
 function renderLedgerReport(el){
@@ -3364,9 +3712,35 @@ function renderAll(){
   refreshReports();
 }
 
+/* ---------------- auto-update (never stuck on an old cached copy) ----------------
+   Every deployed file carries a version number. On open, when you return to the
+   app, and every few minutes, the app fetches the live file bypassing all caches.
+   If the live version is newer it reloads itself onto a fresh URL — no manual
+   cache clearing. It waits if you're in the middle of a form. */
+var APP_VERSION = "2026-11-19.1";
+function liveVersionCheck(){
+  var base = location.href.split("#")[0].split("?")[0];
+  return fetch(base+"?_chk="+Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(txt){
+    var m = /APP_VERSION\s*=\s*"([^"]+)"/.exec(txt);
+    if(!m || m[1]===APP_VERSION) return;
+    if($("#modalOverlay") && $("#modalOverlay").classList.contains("show")) return; // don't wipe an open form
+    try{
+      if(sessionStorage.getItem("mb_reload_to")===m[1]) return; // loop guard
+      sessionStorage.setItem("mb_reload_to", m[1]);
+    }catch(e){}
+    location.replace(base+"?v="+encodeURIComponent(m[1]));
+  }).catch(function(){});
+}
+function startAutoUpdate(){
+  liveVersionCheck();
+  setInterval(liveVersionCheck, 5*60*1000);
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden) liveVersionCheck(); });
+}
+
 /* ---------------- boot ---------------- */
 window.addEventListener("DOMContentLoaded", function(){
   renderAll();
+  startAutoUpdate();
 });
 })();
 </script>
