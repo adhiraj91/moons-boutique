@@ -482,6 +482,8 @@ th.sortable.sorted .sort-arrow{opacity:1;}
   .card.kpi .kpi-sub{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
   .card.kpi.good .value{color:var(--success);}
   .card.kpi.bad .value{color:var(--danger);}
+  .cart-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--cream);}
+  .cart-total{font-size:13px;margin-top:4px;text-align:right;}
 </style>
 </head>
 <body>
@@ -570,7 +572,7 @@ th.sortable.sorted .sort-arrow{opacity:1;}
     </div>
     <div class="cards" id="dashCards"></div>
     <div class="section-block">
-      <h3>Low stock — needs reordering</h3>
+      <h3>Low stock — 2 or fewer pieces in a subcategory</h3>
       <div id="dashLowStock"></div>
     </div>
     <div class="section-block">
@@ -1163,6 +1165,7 @@ async function recordSale(data){
     costPriceAtSale: item.costPrice||0, customer:data.customer||"", notes:data.notes||"",
     exhibitionId: data.exhibitionId||"", exhibitionName: exh ? exh.name : "",
     deliveryCharge: data.deliveryCharge||0, deliveryCity: data.deliveryCity||"", deliveryPincode: data.deliveryPincode||"",
+    billId: data.billId||"",
     createdAt: nowIso()
   });
   await db.collection("stockLog").add({
@@ -1170,8 +1173,10 @@ async function recordSale(data){
     reason:"Sale", detail:data.channel, refType:"sale", refId:sRef.id, createdAt: nowIso()
   });
   if(data.customer && data.customer.trim()) addCustomerQuick(data.customer.trim());
-  toast("Sale recorded.", "success");
-  if(data.exhibitionId) await recalculateExhibitionAllocation(data.exhibitionId);
+  if(!data.silent){
+    toast("Sale recorded.", "success");
+    if(data.exhibitionId) await recalculateExhibitionAllocation(data.exhibitionId);
+  }
 }
 async function updateSale(sale, data){
   if(state.dbOffline){ toast("Please log in first.", "error"); return; }
@@ -2584,40 +2589,52 @@ function openSaleModal(existingSale){
   var editItem = isEdit ? findItem(existingSale.itemId) : null;
   var saleCategoryFilter = "";
   var saleSubcategoryFilter = "";
+  var cart = []; // sarees already added to this sale (add mode)
+  function pickChoices(){
+    var inCart = cart.map(function(l){ return l.itemId; });
+    return itemChoices(saleCategoryFilter, true, saleSubcategoryFilter).filter(function(c){ return inCart.indexOf(c.value)<0; });
+  }
+  var sharedHtml =
+    '<div class="field"><label>Customer (optional)</label>'+freeComboHtml("f_customer", isEdit?(existingSale.customer||""):"", "Name")+'</div>'+
+    '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingSale.date:todayStr())+'"><div id="f_datehint" class="muted" style="font-size:12px;margin-top:4px;"></div></div>'+
+    '<div class="field"><label>Channel</label><select id="f_channel">'+CHANNELS.map(function(c){return '<option'+(isEdit&&existingSale.channel===c?' selected':'')+'>'+c+'</option>';}).join("")+'</select></div>'+
+    '<div class="field"><label>Payment method</label><select id="f_payment">'+PAYMENT_METHODS.map(function(p){return '<option'+(isEdit&&existingSale.paymentMethod===p?' selected':'')+'>'+p+'</option>';}).join("")+'</select></div>'+
+    '<div class="field full" id="grpExhibition" style="display:none;">'+
+      '<label>Exhibition</label>'+
+      '<div style="display:flex;gap:6px;">'+
+        '<select id="f_exhibition" style="flex:1;"><option value="">— Select exhibition —</option>'+
+          state.exhibitions.map(function(e){
+            var end = e.endDate||e.date||"";
+            var ended = end && end < todayStr();
+            var dateLabel = (e.startDate||e.date) ? (' — '+(e.startDate||e.date)+(e.endDate&&e.endDate!==e.startDate?(' to '+e.endDate):'')) : '';
+            return '<option value="'+e.id+'"'+(isEdit&&existingSale.exhibitionId===e.id?' selected':'')+'>'+escapeHtml(e.name)+dateLabel+(ended?' (ended)':'')+'</option>';
+          }).join("")+
+        '</select>'+
+        '<button type="button" class="btn ghost small" id="btnQuickExhibition" style="white-space:nowrap;">+ New</button>'+
+      '</div>'+
+      '<span class="hint">The stall + additional charge for whichever exhibition you pick here gets split across everything sold there, automatically.</span>'+
+    '</div>'+
+    '<div class="field" id="grpDeliveryCharge" style="display:none;"><label>Delivery charge (₹)'+(isEdit?'':' — whole order')+'</label><input id="f_deliverycharge" type="number" min="0" step="1" value="'+(isEdit&&existingSale.deliveryCharge?existingSale.deliveryCharge:"")+'"></div>'+
+    '<div class="field" id="grpDeliveryCity" style="display:none;"><label>Delivery town/city</label><input id="f_deliverycity" value="'+escapeHtml(isEdit?(existingSale.deliveryCity||""):"")+'" placeholder="e.g. Pune"></div>'+
+    '<div class="field" id="grpDeliveryPincode" style="display:none;"><label>Pincode</label><input id="f_deliverypincode" value="'+escapeHtml(isEdit?(existingSale.deliveryPincode||""):"")+'" placeholder="e.g. 411001"></div>';
+  var pickerHtml = isEdit ? '' :
+    '<div class="field full"><label>Sarees in this sale</label><div id="f_cart" class="sale-cart"></div></div>'+
+    '<div class="field full"><strong>Add a saree</strong></div>'+
+    '<div class="field"><label>Filter by category (optional)</label><select id="f_categoryfilter">'+categoryFilterOptionsHtml()+'</select></div>'+
+    '<div class="field"><label>Filter by subcategory (optional)</label><select id="f_subcategoryfilter"><option value="">All subcategories</option></select></div>'+
+    '<div class="field full"><label>Item</label>'+searchableSelectHtml("f_item", pickChoices, "", "Tap to choose a saree…")+'</div>';
+  var priceHtml =
+    '<div class="field" id="grpQty" style="display:none;"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingSale.qty:1)+'"></div>'+
+    '<div class="field"><label>List price (₹)</label><input id="f_listprice" type="number" min="0" step="1" value="'+(isEdit?existingSale.listPriceAtSale:"")+'"></div>'+
+    '<div class="field"><label>Sold at (₹)</label><input id="f_price" type="number" min="0" step="1" value="'+(isEdit?existingSale.unitPrice:"")+'"></div>'+
+    '<div class="field full"><span class="hint" id="f_discounthint"></span></div>'+
+    '<div class="field full"><span class="hint" id="f_stockhint"></span></div>'+
+    (isEdit ? '' : '<div class="field full"><button type="button" class="btn secondary" id="f_addline">+ Add this saree to the sale</button></div>');
   openModal(
     '<h3>'+(isEdit?'Edit sale':'Record sale')+'</h3>'+
     (isEdit ? '<p class="hint" style="margin:-4px 0 10px 0;">Item: <strong>'+escapeHtml(existingSale.itemName)+'</strong> (can\'t be changed — delete and re-add if it was the wrong item)</p>' : '')+
     '<div class="form-grid">'+
-      (isEdit ? '' : '<div class="field"><label>Filter by category (optional)</label><select id="f_categoryfilter">'+categoryFilterOptionsHtml()+'</select></div>')+
-      (isEdit ? '' : '<div class="field"><label>Filter by subcategory (optional)</label><select id="f_subcategoryfilter"><option value="">All subcategories</option></select></div>')+
-      (isEdit ? '' : '<div class="field full"><label>Item</label>'+searchableSelectHtml("f_item", function(){return itemChoices(saleCategoryFilter, true, saleSubcategoryFilter);}, "", "Type an item name…")+'</div>')+
-      '<div class="field"><label>Channel</label><select id="f_channel">'+CHANNELS.map(function(c){return '<option'+(isEdit&&existingSale.channel===c?' selected':'')+'>'+c+'</option>';}).join("")+'</select></div>'+
-      '<div class="field"><label>Payment method</label><select id="f_payment">'+PAYMENT_METHODS.map(function(p){return '<option'+(isEdit&&existingSale.paymentMethod===p?' selected':'')+'>'+p+'</option>';}).join("")+'</select></div>'+
-      '<div class="field full" id="grpExhibition" style="display:none;">'+
-        '<label>Exhibition</label>'+
-        '<div style="display:flex;gap:6px;">'+
-          '<select id="f_exhibition" style="flex:1;"><option value="">— Select exhibition —</option>'+
-            state.exhibitions.map(function(e){
-              var end = e.endDate||e.date||"";
-              var ended = end && end < todayStr();
-              var dateLabel = (e.startDate||e.date) ? (' — '+(e.startDate||e.date)+(e.endDate&&e.endDate!==e.startDate?(' to '+e.endDate):'')) : '';
-              return '<option value="'+e.id+'"'+(isEdit&&existingSale.exhibitionId===e.id?' selected':'')+'>'+escapeHtml(e.name)+dateLabel+(ended?' (ended)':'')+'</option>';
-            }).join("")+
-          '</select>'+
-          '<button type="button" class="btn ghost small" id="btnQuickExhibition" style="white-space:nowrap;">+ New</button>'+
-        '</div>'+
-        '<span class="hint">The stall + additional charge for whichever exhibition you pick here gets split across everything sold there, automatically.</span>'+
-      '</div>'+
-      '<div class="field" id="grpDeliveryCharge" style="display:none;"><label>Delivery charge (₹)</label><input id="f_deliverycharge" type="number" min="0" step="1" value="'+(isEdit&&existingSale.deliveryCharge?existingSale.deliveryCharge:"")+'"></div>'+
-      '<div class="field" id="grpDeliveryCity" style="display:none;"><label>Delivery town/city</label><input id="f_deliverycity" value="'+escapeHtml(isEdit?(existingSale.deliveryCity||""):"")+'" placeholder="e.g. Pune"></div>'+
-      '<div class="field" id="grpDeliveryPincode" style="display:none;"><label>Pincode</label><input id="f_deliverypincode" value="'+escapeHtml(isEdit?(existingSale.deliveryPincode||""):"")+'" placeholder="e.g. 411001"></div>'+
-      '<div class="field"><label>Date</label><input id="f_date" type="date" value="'+(isEdit?existingSale.date:todayStr())+'"><div id="f_datehint" class="muted" style="font-size:12px;margin-top:4px;"></div></div>'+
-      '<div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" step="1" value="'+(isEdit?existingSale.qty:1)+'"></div>'+
-      '<div class="field"><label>List price (₹)</label><input id="f_listprice" type="number" min="0" step="1" value="'+(isEdit?existingSale.listPriceAtSale:"")+'"></div>'+
-      '<div class="field"><label>Sold at (₹)</label><input id="f_price" type="number" min="0" step="1" value="'+(isEdit?existingSale.unitPrice:"")+'"></div>'+
-      '<div class="field full"><span class="hint" id="f_discounthint"></span></div>'+
-      '<div class="field"><label>Customer (optional)</label>'+freeComboHtml("f_customer", isEdit?(existingSale.customer||""):"", "Name")+'</div>'+
-      '<div class="field full"><span class="hint" id="f_stockhint"></span></div>'+
+      sharedHtml+pickerHtml+priceHtml+
       '<div class="field full"><label>Notes</label><textarea id="f_notes" rows="2">'+escapeHtml(isEdit?(existingSale.notes||""):"")+'</textarea></div>'+
     '</div>'+
     '<div class="modal-actions">'+
@@ -2629,23 +2646,70 @@ function openSaleModal(existingSale){
     return isEdit ? editItem : findItem($("#f_item").value);
   }
   function updateDiscountHint(){
-    var qty = Number($("#f_qty").value)||0;
+    var qty = Number($("#f_qty").value)||1;
     var list = Number($("#f_listprice").value)||0;
     var sold = Number($("#f_price").value)||0;
     var disc = Math.max(0, qty*(list-sold));
-    $("#f_discounthint").textContent = disc>0 ? ("Discount given: "+fmtMoney(disc)+" total") : (sold>list && list>0 ? "Selling above list price." : "No discount.");
+    $("#f_discounthint").textContent = disc>0 ? ("Discount given: "+fmtMoney(disc)) : (sold>list && list>0 ? "Selling above list price." : "No discount.");
+  }
+  // Each saree is its own SKU (one piece), so quantity only appears for
+  // older multi-quantity stock lines.
+  function syncQtyVisibility(it){
+    var needs;
+    if(isEdit) needs = existingSale.qty>1 || (it && ((it.stock||0)+existingSale.qty)>1);
+    else needs = !!(it && (it.stock||0)>1);
+    $("#grpQty").style.display = needs ? "" : "none";
+    if(!needs && !isEdit) $("#f_qty").value = 1;
   }
   function syncItem(itemId){
     var it = isEdit ? editItem : findItem(itemId);
+    if(!isEdit) $("#f_qty").value = 1;
     if(it){
       $("#f_listprice").value = it.sellingPrice||0;
       if(!isEdit) $("#f_price").value = it.sellingPrice||"";
-      $("#f_stockhint").textContent = "Category: "+(it.category||"—")+(it.subcategory?(" / "+it.subcategory):"")+(it.color?(" · Color: "+it.color):"")+" · SKU: "+(it.sku||"—")+" · Current stock: "+fmtNum(it.stock)+" · Cost price: "+fmtMoney(it.costPrice);
+      $("#f_stockhint").textContent = "Category: "+(it.category||"—")+(it.subcategory?(" / "+it.subcategory):"")+(it.color?(" · Color: "+it.color):"")+" · SKU: "+(it.sku||"—")+(((it.stock||0)>1)?(" · In stock: "+fmtNum(it.stock)):"")+" · Cost price: "+fmtMoney(it.costPrice);
     }
+    syncQtyVisibility(it);
     updateDiscountHint();
   }
+  function resetPicker(){
+    $("#f_item_q").value = ""; $("#f_item").value = "";
+    $("#f_listprice").value = ""; $("#f_price").value = "";
+    $("#f_stockhint").textContent = ""; $("#f_qty").value = 1;
+    syncQtyVisibility(null); updateDiscountHint();
+  }
+  function renderCart(){
+    var el = $("#f_cart"); if(!el) return;
+    if(!cart.length){ el.innerHTML = '<div class="hint">No sarees added yet — pick one below and tap "Add this saree".</div>'; return; }
+    var sum = cart.reduce(function(s,l){ return s+l.qty*l.price; },0);
+    el.innerHTML = cart.map(function(l,i){
+      return '<div class="cart-line"><div><strong>'+escapeHtml(l.label)+'</strong><div class="muted" style="font-size:12px;">'+(l.qty>1?l.qty+' × ':'')+fmtMoney(l.price)+(l.listPrice>l.price?' (list '+fmtMoney(l.listPrice)+')':'')+'</div></div>'+
+        '<button type="button" class="btn small ghost" data-rm="'+i+'">Remove</button></div>';
+    }).join("")+'<div class="cart-total">'+cart.length+' saree'+(cart.length>1?'s':'')+' · Total <strong>'+fmtMoney(sum)+'</strong></div>';
+    $all("[data-rm]", el).forEach(function(b){
+      b.addEventListener("click", function(){ cart.splice(Number(b.dataset.rm),1); renderCart(); });
+    });
+  }
+  // Adds whatever is currently in the picker to the cart. Returns true if added.
+  async function addPickerToCart(){
+    var itemId = $("#f_item").value;
+    if(!itemId){ toast("Choose a saree from the list — tap a suggestion, don't just type.", "error"); return false; }
+    var it = findItem(itemId);
+    var qty = Number($("#f_qty").value)||1;
+    var price = Number($("#f_price").value);
+    if($("#f_price").value==="" || price<0){ toast("Enter the price it sold at.", "error"); return false; }
+    var listPrice = Number($("#f_listprice").value)||price;
+    if(it && qty > (it.stock||0)){
+      if(!(await appConfirm("Only "+it.stock+" in stock but you're selling "+qty+". Continue?", {title:"Not enough stock", confirmLabel:"Continue anyway"}))) return false;
+    }
+    var ch = itemChoices("", true, "").filter(function(c){ return c.value===itemId; })[0];
+    cart.push({itemId:itemId, label:(ch?ch.label:(it?it.name:"Saree")), qty:qty, price:price, listPrice:listPrice});
+    resetPicker();
+    renderCart();
+    return true;
+  }
   if(!isEdit){
-    wireSearchableSelect("f_item", function(){return itemChoices(saleCategoryFilter, true, saleSubcategoryFilter);}, function(itemId){ syncItem(itemId); });
+    wireSearchableSelect("f_item", pickChoices, function(itemId){ syncItem(itemId); });
     function refreshSubcategoryFilterOptions(){
       var el = $("#f_subcategoryfilter");
       var subs = subcategoriesFor(saleCategoryFilter);
@@ -2657,20 +2721,15 @@ function openSaleModal(existingSale){
       saleCategoryFilter = this.value;
       saleSubcategoryFilter = "";
       refreshSubcategoryFilterOptions();
-      refreshSearchableSelectOptions("f_item", function(){return itemChoices(saleCategoryFilter, true, saleSubcategoryFilter);});
-      $("#f_item_q").value = "";
-      $("#f_item").value = "";
-      $("#f_stockhint").textContent = "";
-      $("#f_listprice").value = "";
+      resetPicker();
     });
     $("#f_subcategoryfilter").addEventListener("change", function(){
       saleSubcategoryFilter = this.value;
-      refreshSearchableSelectOptions("f_item", function(){return itemChoices(saleCategoryFilter, true, saleSubcategoryFilter);});
-      $("#f_item_q").value = "";
-      $("#f_item").value = "";
-      $("#f_stockhint").textContent = "";
-      $("#f_listprice").value = "";
+      resetPicker();
     });
+    $("#f_addline").addEventListener("click", addPickerToCart);
+    renderCart();
+    syncQtyVisibility(null);
   } else {
     syncItem();
   }
@@ -2714,14 +2773,6 @@ function openSaleModal(existingSale){
   $("#f_listprice").addEventListener("input", updateDiscountHint);
   $("#f_cancel").addEventListener("click", closeModal);
   $("#f_save").addEventListener("click", async function(){
-    var it = currentItem();
-    var itemId = isEdit ? existingSale.itemId : $("#f_item").value;
-    if(!isEdit && !itemId){ toast("Choose an item from the list — tap a suggestion, don't just type.", "error"); return; }
-    var qty = Number($("#f_qty").value);
-    var price = Number($("#f_price").value);
-    var listPrice = Number($("#f_listprice").value)||price;
-    if(!qty || qty<=0){ toast("Enter a valid quantity.", "error"); return; }
-    if(price<0 || $("#f_price").value===""){ toast("Enter the price it sold at.", "error"); return; }
     if($("#f_channel").value==="Exhibition"){
       var exSel = state.exhibitions.find(function(x){ return x.id===$("#f_exhibition").value; });
       if(exSel && exSel.startDate){
@@ -2730,24 +2781,41 @@ function openSaleModal(existingSale){
       }
     }
     if(!(await validateTxnDate($("#f_date").value))) return;
-    if(!isEdit && it && qty > it.stock){
-      if(!(await appConfirm("Only "+it.stock+" in stock but you're selling "+qty+". Stock will be set to 0. Continue?", {title:"Not enough stock", confirmLabel:"Continue anyway"}))) return;
-    }
-    var payload = {
-      channel:$("#f_channel").value, paymentMethod:$("#f_payment").value, date:$("#f_date").value||todayStr(),
-      qty:qty, unitPrice:price, listPrice:listPrice,
+    var ch = $("#f_channel").value;
+    var shared = {
+      channel:ch, paymentMethod:$("#f_payment").value, date:$("#f_date").value||todayStr(),
       customer:$("#f_customer").value.trim(), notes:$("#f_notes").value.trim(),
-      exhibitionId: $("#f_channel").value==="Exhibition" ? ($("#f_exhibition").value||"") : "",
-      deliveryCharge: $("#f_channel").value==="Online" ? (Number($("#f_deliverycharge").value)||0) : 0,
-      deliveryCity: $("#f_channel").value==="Online" ? $("#f_deliverycity").value.trim() : "",
-      deliveryPincode: $("#f_channel").value==="Online" ? $("#f_deliverypincode").value.trim() : ""
+      exhibitionId: ch==="Exhibition" ? ($("#f_exhibition").value||"") : "",
+      deliveryCity: ch==="Online" ? $("#f_deliverycity").value.trim() : "",
+      deliveryPincode: ch==="Online" ? $("#f_deliverypincode").value.trim() : ""
     };
+    var deliveryTotal = ch==="Online" ? (Number($("#f_deliverycharge").value)||0) : 0;
+
     if(isEdit){
+      var qty = Number($("#f_qty").value)||1;
+      var price = Number($("#f_price").value);
+      if(price<0 || $("#f_price").value===""){ toast("Enter the price it sold at.", "error"); return; }
+      var payload = Object.assign({}, shared, {qty:qty, unitPrice:price, listPrice:Number($("#f_listprice").value)||price, deliveryCharge:deliveryTotal});
       await updateSale(existingSale, payload);
-    } else {
-      payload.itemId = itemId;
-      await recordSale(payload);
+      closeModal();
+      return;
     }
+
+    // add mode: include a saree still sitting in the picker, then save the whole cart
+    if($("#f_item").value){ if(!(await addPickerToCart())) return; }
+    if(!cart.length){ toast("Add at least one saree to the sale.", "error"); return; }
+    var billId = "bill_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    var n = cart.length, perLine = Math.floor(deliveryTotal/n), given = 0;
+    for(var i=0;i<n;i++){
+      var l = cart[i];
+      var dc = (i===n-1) ? (deliveryTotal-given) : perLine; given += perLine;
+      await recordSale(Object.assign({}, shared, {
+        itemId:l.itemId, qty:l.qty, unitPrice:l.price, listPrice:l.listPrice,
+        deliveryCharge:dc, billId:billId, silent:true
+      }));
+    }
+    if(shared.exhibitionId) await recalculateExhibitionAllocation(shared.exhibitionId);
+    toast(n===1 ? "Sale recorded." : (n+" sarees recorded as one sale."), "success");
     closeModal();
   });
 }
@@ -2792,13 +2860,30 @@ $("#btnAddSale").addEventListener("click", function(){ openSaleModal(); });
 $("#btnAddAdjustment").addEventListener("click", function(){ openAdjustmentModal(); });
 
 /* ---------------- render: dashboard ---------------- */
+var LOW_STOCK_LIMIT = 2; // a subcategory is "low" when it has this many pieces or fewer
+function lowStockGroups(){
+  var g = {};
+  state.inventory.forEach(function(i){
+    var cat = i.category || "(No category)", sub = i.subcategory || "";
+    var key = cat+"||"+sub;
+    if(!g[key]) g[key] = {category:cat, subcategory:sub, pieces:0, wholesalers:{}};
+    g[key].pieces += i.stock||0;
+    if(i.wholesaler) g[key].wholesalers[i.wholesaler] = 1;
+  });
+  return Object.keys(g).map(function(k){
+    var x = g[k]; x.wholesaler = Object.keys(x.wholesalers).join(", "); return x;
+  }).filter(function(x){ return x.pieces <= LOW_STOCK_LIMIT; })
+    .sort(function(a,b){ return a.pieces-b.pieces || a.category.localeCompare(b.category) || a.subcategory.localeCompare(b.subcategory); });
+}
+function lowStockStatus(x){ return x.pieces<=0 ? '<span class="tag exhibition">Sold out</span>' : '<span class="tag online">Low</span>'; }
+
 function renderDashboard(){
   var inv = state.inventory;
   var totalItems = inv.length;
   var totalStock = inv.reduce(function(s,i){ return s+(i.stock||0); }, 0);
   var stockValue = inv.reduce(function(s,i){ return s+(i.stock||0)*(i.costPrice||0); }, 0);
   var potentialRevenue = inv.reduce(function(s,i){ return s+(i.stock||0)*(i.sellingPrice||0); }, 0);
-  var lowStock = inv.filter(function(i){ return (i.stock||0) <= (i.reorderLevel||0); });
+  var lowStock = lowStockGroups();
   var mStart = monthStartStr();
   var monthSales = state.sales.filter(function(s){ return s.date >= mStart; });
   var monthRevenue = monthSales.reduce(function(s,x){ return s+(x.totalPrice||0); }, 0);
@@ -2811,19 +2896,19 @@ function renderDashboard(){
     card("Potential revenue", fmtMoney(potentialRevenue)),
     card("This month's sales", fmtMoney(monthRevenue)),
     card("This month's profit", fmtMoney(monthProfit)),
-  ].join("") + (lowStock.length ? card("Low stock items", fmtNum(lowStock.length), true) : "");
+  ].join("") + (lowStock.length ? card("Subcategories low on stock", fmtNum(lowStock.length), true) : "");
 
   function card(label, value, warn){
     return '<div class="card'+(warn?' warn':'')+'"><div class="label">'+label+'</div><div class="value">'+value+'</div></div>';
   }
 
   if(lowStock.length===0){
-    $("#dashLowStock").innerHTML = '<div class="empty">Nothing below reorder level. You\'re fully stocked.</div>';
+    $("#dashLowStock").innerHTML = '<div class="empty">Every subcategory has more than '+LOW_STOCK_LIMIT+' pieces. You\'re well stocked.</div>';
   } else {
     $("#dashLowStock").innerHTML = simpleTable(
-      ["Item","Category","Stock","Reorder level"],
-      lowStock.sort(function(a,b){return a.stock-b.stock;}).map(function(i){
-        return [escapeHtml(i.name), escapeHtml(i.category||""), '<span class="stock-badge">'+fmtNum(i.stock)+'</span>', fmtNum(i.reorderLevel)];
+      ["Category","Subcategory","Pieces left","Status"],
+      lowStock.map(function(x){
+        return [escapeHtml(x.category), escapeHtml(x.subcategory||"—"), '<span class="stock-badge">'+fmtNum(x.pieces)+'</span>', lowStockStatus(x)];
       })
     );
   }
@@ -3254,21 +3339,20 @@ function renderStockReport(el){
 }
 
 function renderLowStockReport(el){
-  var low = state.inventory.filter(function(i){return (i.stock||0)<=(i.reorderLevel||0);})
-    .sort(function(a,b){return (a.stock||0)-(b.stock||0);});
+  var low = lowStockGroups();
   el.innerHTML =
+    '<p class="rep-note">A subcategory is flagged when it has '+LOW_STOCK_LIMIT+' pieces or fewer left in stock. Sold-out subcategories show first.</p>'+
     '<div style="margin-bottom:10px;"><button class="btn secondary small" id="expBtn">Export CSV</button></div>'+
     '<div class="table-wrap">'+(low.length ? simpleTable(
-      ["Item","Category","Wholesaler","Stock","Reorder level","Shortfall"],
-      low.map(function(i){
-        return [escapeHtml(i.name), escapeHtml(i.category||""), escapeHtml(i.wholesaler||""),
-          fmtNum(i.stock), fmtNum(i.reorderLevel), fmtNum(Math.max(0,(i.reorderLevel||0)-(i.stock||0)))];
+      ["Category","Subcategory","Pieces left","Status","Wholesaler(s)"],
+      low.map(function(x){
+        return [escapeHtml(x.category), escapeHtml(x.subcategory||"—"), fmtNum(x.pieces), lowStockStatus(x), escapeHtml(x.wholesaler||"")];
       })
-    ) : '<div class="empty">Nothing below reorder level.</div>')+'</div>';
+    ) : '<div class="empty">Every subcategory has more than '+LOW_STOCK_LIMIT+' pieces.</div>')+'</div>';
   $("#expBtn").addEventListener("click", function(){
     exportCSV("low-stock-"+todayStr()+".csv",
-      ["Item","Category","Wholesaler","Stock","Reorder Level"],
-      low.map(function(i){return [i.name,i.category||"",i.wholesaler||"",i.stock||0,i.reorderLevel||0];})
+      ["Category","Subcategory","Pieces Left","Status","Wholesalers"],
+      low.map(function(x){return [x.category,x.subcategory,x.pieces,x.pieces<=0?"Sold out":"Low",x.wholesaler];})
     );
   });
 }
@@ -3717,7 +3801,7 @@ function renderAll(){
    app, and every few minutes, the app fetches the live file bypassing all caches.
    If the live version is newer it reloads itself onto a fresh URL — no manual
    cache clearing. It waits if you're in the middle of a form. */
-var APP_VERSION = "2026-11-19.1";
+var APP_VERSION = "2026-11-20.1";
 function liveVersionCheck(){
   var base = location.href.split("#")[0].split("?")[0];
   return fetch(base+"?_chk="+Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(txt){
